@@ -3,6 +3,7 @@ import authReducer from './authSlice';
 import itemsReducer from './itemsSlice';
 import themeReducer from './themeSlice';
 import detailsReducer from './detailsSlice';
+import bookingsReducer from './bookingsSlice';
 
 const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ const store = configureStore({
     items: itemsReducer,
     theme: themeReducer,
     details: detailsReducer,
+    bookings: bookingsReducer,
   },
 });
 

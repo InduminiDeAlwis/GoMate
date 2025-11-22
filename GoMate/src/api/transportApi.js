@@ -85,4 +85,19 @@ export async function fetchTransportItemDetails(id) {
   return details;
 }
 
+export async function bookTransportItem(itemId, opts = {}) {
+  // Mock a booking creation. In a real app you'd call the provider's booking endpoint.
+  // opts can include user info, seats, payment token, etc.
+  await new Promise((r) => setTimeout(r, 600));
+  const booking = {
+    id: `bk_${Date.now()}`,
+    itemId,
+    user: opts.user || {username: 'guest'},
+    bookedAt: new Date().toISOString(),
+    confirmationCode: Math.random().toString(36).slice(2, 9).toUpperCase(),
+    status: 'confirmed',
+  };
+  return booking;
+}
+
 

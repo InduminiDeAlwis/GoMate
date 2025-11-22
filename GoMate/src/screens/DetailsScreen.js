@@ -1,8 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import {View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Alert, Platform} from 'react-native';
+import {View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Alert, Platform, Modal, TextInput} from 'react-native';
 import MapView, {Marker} from 'react-native-maps';
 import {useDispatch, useSelector} from 'react-redux';
 import {fetchDetails} from '../redux/detailsSlice';
+import {bookItem} from '../redux/bookingsSlice';
 
 export default function DetailsScreen({route}) {
   const passed = route.params?.item;
@@ -13,6 +14,14 @@ export default function DetailsScreen({route}) {
 
   const dispatch = useDispatch();
   const cached = useSelector((s) => (id ? s.details.cache[id] : null));
+  const user = useSelector((s) => s.auth.user);
+  const bookingState = useSelector((s) => s.bookings || {bookings: [], loading: false});
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingModalVisible, setBookingModalVisible] = useState(false);
+  const [passengerName, setPassengerName] = useState(user?.firstName || user?.username || '');
+  const [seats, setSeats] = useState(1);
+  const [selectedScheduleIndex, setSelectedScheduleIndex] = useState(0);
+  const [lastBooking, setLastBooking] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -62,7 +71,8 @@ export default function DetailsScreen({route}) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
       <Image source={{uri: item.thumbnail || item.images?.[0]}} style={styles.image} />
       <View style={styles.headerRow}>
         <Text style={styles.title}>{item.title}</Text>
@@ -123,10 +133,16 @@ export default function DetailsScreen({route}) {
           {/* Actions: Book / Directions */}
           <View style={{flexDirection: 'row', marginTop: 12, width: '100%', justifyContent: 'space-between'}}>
             <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => Alert.alert('Booked', `You booked ${item.title}`)}
+              style={[styles.actionButton, {backgroundColor: '#0a84ff'}]}
+              onPress={() => {
+                // open interactive booking modal
+                setPassengerName(user?.firstName || user?.username || '');
+                setSeats(1);
+                setSelectedScheduleIndex(0);
+                setBookingModalVisible(true);
+              }}
             >
-              <Text style={styles.actionText}>Book</Text>
+              <Text style={[styles.actionText, {color: 'white'}]}>Book</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -153,8 +169,79 @@ export default function DetailsScreen({route}) {
         </View>
       ) : null}
     </ScrollView>
+    {/* Booking modal */}
+    <Modal visible={bookingModalVisible} transparent animationType="slide" onRequestClose={() => setBookingModalVisible(false)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Book: {item.title}</Text>
+
+          {item.schedule && item.schedule.length > 0 ? (
+            <View style={{marginBottom: 8}}>
+              <Text style={{fontWeight: '700', marginBottom: 6}}>Choose schedule</Text>
+              <View style={{flexDirection: 'row', flexWrap: 'wrap'}}>
+                {item.schedule.map((s, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => setSelectedScheduleIndex(idx)}
+                    style={[styles.scheduleChip, selectedScheduleIndex === idx ? styles.scheduleChipActive : null]}
+                  >
+                    <Text style={selectedScheduleIndex === idx ? {color: 'white', fontWeight: '700'} : {}}>{s.time}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <Text style={{fontWeight: '700', marginBottom: 6}}>Passenger name</Text>
+          <TextInput value={passengerName} onChangeText={setPassengerName} placeholder="Name" style={styles.input} />
+
+          <Text style={{fontWeight: '700', marginTop: 8}}>Seats</Text>
+          <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 6}}>
+            <TouchableOpacity onPress={() => setSeats(Math.max(1, seats - 1))} style={styles.seatBtn}><Text>-</Text></TouchableOpacity>
+            <Text style={{marginHorizontal: 12, fontWeight: '700'}}>{seats}</Text>
+            <TouchableOpacity onPress={() => setSeats(seats + 1)} style={styles.seatBtn}><Text>+</Text></TouchableOpacity>
+          </View>
+
+          <View style={{flexDirection: 'row', marginTop: 16}}>
+            <TouchableOpacity style={[styles.modalButton, {backgroundColor: '#eee'}]} onPress={() => setBookingModalVisible(false)}>
+              <Text style={{fontWeight: '700'}}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonPrimary]}
+              onPress={async () => {
+                try {
+                  setBookingLoading(true);
+                  const schedule = item.schedule && item.schedule[selectedScheduleIndex] ? item.schedule[selectedScheduleIndex] : null;
+                  const payload = {itemId: id, user: {...(user || {}), passengerName, seats, schedule}};
+                  const action = await dispatch(bookItem(payload));
+                  const booking = action.payload;
+                  setBookingLoading(false);
+                  setBookingModalVisible(false);
+                  setLastBooking(booking);
+                  if (booking && booking.confirmationCode) {
+                    Alert.alert('Booking confirmed', `Code: ${booking.confirmationCode}`);
+                  } else {
+                    Alert.alert('Booked', `You booked ${item.title}`);
+                  }
+                } catch (e) {
+                  setBookingLoading(false);
+                  Alert.alert('Booking failed', e.message || 'Unable to complete booking');
+                }
+              }}
+            >
+              {bookingLoading ? <ActivityIndicator color="white" /> : <Text style={{color: 'white', fontWeight: '700'}}>Confirm</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
+
+// Booking modal component is rendered inside DetailsScreen file via state; below are styles for modal elements.
+
 
 const styles = StyleSheet.create({
   container: {padding: 16, backgroundColor: '#fff', alignItems: 'flex-start'},
@@ -172,4 +259,13 @@ const styles = StyleSheet.create({
   stopItem: {paddingVertical: 4, color: '#444'},
   actionButton: {flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#eee', alignItems: 'center', marginRight: 8},
   actionText: {fontWeight: '700'},
+  modalOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center'},
+  modalContent: {width: '90%', backgroundColor: 'white', padding: 16, borderRadius: 12},
+  modalTitle: {fontSize: 18, fontWeight: '800', marginBottom: 8},
+  input: {borderWidth: 1, borderColor: '#eee', padding: 10, borderRadius: 8, backgroundColor: '#fff'},
+  seatBtn: {width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center'},
+  scheduleChip: {paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f2f2f2', marginRight: 8, marginBottom: 8},
+  scheduleChipActive: {backgroundColor: '#0a84ff'},
+  modalButton: {flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginRight: 8},
+  modalButtonPrimary: {backgroundColor: '#0a84ff'},
 });
