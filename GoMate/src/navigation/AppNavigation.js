@@ -10,6 +10,7 @@ import HomeScreen from '../screens/HomeScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import DetailsScreen from '../screens/DetailsScreen';
+import RecentBookingsScreen from '../screens/RecentBookingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -56,6 +57,7 @@ export default function AppNavigation() {
         <>
           <Stack.Screen name="Main" component={MainTabs} options={{headerShown: false}} />
           <Stack.Screen name="Details" component={DetailsScreen} options={{title: 'Details'}} />
+          <Stack.Screen name="RecentBookings" component={RecentBookingsScreen} options={{title: 'Recent Bookings'}} />
         </>
       )}
     </Stack.Navigator>

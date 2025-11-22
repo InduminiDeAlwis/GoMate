@@ -64,6 +64,32 @@ export const registerUser = createAsyncThunk('auth/registerUser', async (payload
   }
 });
 
+export const updateProfile = createAsyncThunk('auth/updateProfile', async (payload, {getState, rejectWithValue}) => {
+  try {
+    const state = getState();
+    const username = state.auth.user?.username;
+    if (!username) throw new Error('Not logged in');
+
+    // update local users store if present
+    try {
+      const raw = await AsyncStorage.getItem('@local_users');
+      const users = raw ? JSON.parse(raw) : [];
+      const idx = users.findIndex((u) => u.username === username);
+      if (idx >= 0) {
+        users[idx] = {...users[idx], firstName: payload.firstName || users[idx].firstName, lastName: payload.lastName || users[idx].lastName, imageUrl: payload.imageUrl || users[idx].imageUrl};
+        await AsyncStorage.setItem('@local_users', JSON.stringify(users));
+      }
+    } catch (e) {
+      // ignore storage errors
+    }
+
+    // return updated user shape
+    return {username, firstName: payload.firstName || '', lastName: payload.lastName || '', imageUrl: payload.imageUrl || ''};
+  } catch (e) {
+    return rejectWithValue(e.message || 'Update failed');
+  }
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -107,6 +133,19 @@ const authSlice = createSlice({
         s.loading = false;
         s.error = a.payload || a.error?.message || 'Registration failed';
       });
+        builder
+          .addCase(updateProfile.pending, (s) => {
+            s.loading = true;
+            s.error = null;
+          })
+          .addCase(updateProfile.fulfilled, (s, a) => {
+            s.loading = false;
+            s.user = {username: a.payload.username, firstName: a.payload.firstName, lastName: a.payload.lastName, imageUrl: a.payload.imageUrl};
+          })
+          .addCase(updateProfile.rejected, (s, a) => {
+            s.loading = false;
+            s.error = a.payload || a.error?.message || 'Update failed';
+          });
   },
 });
 
