@@ -1,7 +1,40 @@
+// Transport API helper: try to fetch from TransportAPI (requires keys), but fall back to mock data.
 export async function fetchTransportItems() {
-  const url = 'https://dummyjson.com/products/category/automotive';
-  const res = await fetch(url, {method: 'GET'});
-  if (!res.ok) throw new Error('Network error');
-  const json = await res.json();
-  return json;
+  // If you have TransportAPI credentials, you can build a real request here.
+  // For now, return mock transport items wrapped in { products: [...] } to match existing slice expectations.
+
+  // Attempt remote call to a demo endpoint (kept generic); if it fails, fall back to mock.
+  try {
+    // Example placeholder - most Transport API calls require keys so this will likely fail in dev.
+    const url = 'https://api.transportapi.com/v3/uk/places.json?query=bus&app_id=YOUR_ID&app_key=YOUR_KEY';
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      // Map remote structure to our product-like structure
+      const products = (json.member || json.places || []).slice(0, 20).map((p, idx) => ({
+        id: p.id || idx + 1000,
+        title: p.name || p.atcocode || `Transport ${idx + 1}`,
+        description: p.description || p.locality || 'Transport service',
+        thumbnail: p.icon || `https://picsum.photos/200/200?random=${idx + 10}`,
+        status: 'Active',
+        type: p.type || 'Transport',
+      }));
+      return {products};
+    }
+  } catch (e) {
+    // ignore and fall back
+  }
+
+  // Mock transport-themed data
+  const mock = [
+    {id: 101, title: 'City Express Bus', description: 'Frequent city route connecting downtown and uptown', thumbnail: 'https://picsum.photos/300/200?random=11', status: 'Active', type: 'Bus'},
+    {id: 102, title: 'Coastal Ferry', description: 'Scenic ferry service to the nearby islands', thumbnail: 'https://picsum.photos/300/200?random=12', status: 'Popular', type: 'Ferry'},
+    {id: 103, title: 'Regional Train', description: 'Comfortable train with Wi-Fi and refreshments', thumbnail: 'https://picsum.photos/300/200?random=13', status: 'Active', type: 'Train'},
+    {id: 104, title: 'Airport Shuttle', description: 'Direct shuttle to the airport (every 30 mins)', thumbnail: 'https://picsum.photos/300/200?random=14', status: 'Upcoming', type: 'Shuttle'},
+    {id: 105, title: 'Night Rider Bus', description: 'Night-time service across major hubs', thumbnail: 'https://picsum.photos/300/200?random=15', status: 'Popular', type: 'Bus'},
+    {id: 106, title: 'River Taxi', description: 'Fast water taxi for riverside stops', thumbnail: 'https://picsum.photos/300/200?random=16', status: 'Active', type: 'Boat'},
+  ];
+
+  return {products: mock};
 }
+
