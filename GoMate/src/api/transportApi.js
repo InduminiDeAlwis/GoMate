@@ -38,3 +38,51 @@ export async function fetchTransportItems() {
   return {products: mock};
 }
 
+export async function fetchTransportItemDetails(id) {
+  // Try remote TransportAPI details if available (placeholder), otherwise return mocked details
+  try {
+    // Placeholder URL - requires app_id/app_key
+    const url = `https://api.transportapi.com/v3/uk/places/${id}.json?app_id=YOUR_ID&app_key=YOUR_KEY`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      // Map to our expected detail shape
+      return {
+        id: json.id || id,
+        title: json.name || json.locality || `Transport ${id}`,
+        description: json.description || json.locality || 'Transport service details',
+        thumbnail: json.icon || `https://picsum.photos/600/300?random=${id}`,
+        status: 'Active',
+        type: json.type || 'Transport',
+        schedule: [],
+      };
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Mock detail payload
+  const details = {
+    id,
+    title: `Detailed ${id}`,
+    description: 'This is a detailed description of the transport service, including amenities and notes.',
+    thumbnail: `https://picsum.photos/600/300?random=${id}`,
+    status: id % 2 === 0 ? 'Active' : 'Popular',
+    type: id % 3 === 0 ? 'Train' : id % 3 === 1 ? 'Bus' : 'Ferry',
+    schedule: [
+      {time: '08:00', dest: 'Central Station'},
+      {time: '09:30', dest: 'Airport'},
+      {time: '11:00', dest: 'Harbour'},
+    ],
+    // include geo coordinates for map rendering (mocked around a central point)
+    stops: [
+      {name: 'Central Station', latitude: 51.5074, longitude: -0.1278},
+      {name: 'City Square', latitude: 51.5090, longitude: -0.1180},
+      {name: 'Harbour', latitude: 51.5010, longitude: -0.1420},
+    ],
+  };
+
+  return details;
+}
+
+
