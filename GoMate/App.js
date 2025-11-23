@@ -7,6 +7,7 @@ import AppNavigation from './src/navigation/AppNavigation';
 import SplashScreen from './src/components/SplashScreen';
 import store from './src/redux/store';
 import { loadFavorites } from './src/redux/itemsSlice';
+import { registerForPushNotificationsAsync } from './src/services/notificationService';
 
 function RootApp() {
   const systemScheme = useColorScheme();
@@ -16,6 +17,13 @@ function RootApp() {
 
   React.useEffect(() => {
     dispatch(loadFavorites());
+    
+    // Register for push notifications
+    registerForPushNotificationsAsync().then(token => {
+      if (token) {
+        console.log('✅ Push notifications enabled');
+      }
+    });
   }, [dispatch]);
 
   const isDark = themeMode === 'dark' || (themeMode === 'system' && systemScheme === 'dark');

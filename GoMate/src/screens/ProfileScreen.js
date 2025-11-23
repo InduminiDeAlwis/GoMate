@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, Switch, TextInput, FlatList, Image, ScrollView, Animated, Modal, Alert} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Feather} from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,6 +9,7 @@ import {useDispatch, useSelector} from 'react-redux';
 import {logout, updateProfile} from '../redux/authSlice';
 import {setTheme} from '../redux/themeSlice';
 import {loadBookings} from '../redux/bookingsSlice';
+import {getAllScheduledNotifications} from '../services/notificationService';
 
 export default function ProfileScreen() {
   const dispatch = useDispatch();
@@ -24,6 +26,11 @@ export default function ProfileScreen() {
 
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [bookingNotifications, setBookingNotifications] = useState(true);
+  const [departureReminders, setDepartureReminders] = useState(true);
+  const [favoriteNotifications, setFavoriteNotifications] = useState(true);
+  const [scheduledNotificationsCount, setScheduledNotificationsCount] = useState(0);
   
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
@@ -301,6 +308,71 @@ export default function ProfileScreen() {
     return '#667eea';
   };
 
+  // Load notification preferences
+  useEffect(() => {
+    const loadNotificationPreferences = async () => {
+      try {
+        const prefs = await AsyncStorage.getItem('notificationPreferences');
+        if (prefs) {
+          const parsed = JSON.parse(prefs);
+          setNotificationsEnabled(parsed.enabled !== false);
+          setBookingNotifications(parsed.bookingNotifications !== false);
+          setDepartureReminders(parsed.departureReminders !== false);
+          setFavoriteNotifications(parsed.favoriteNotifications !== false);
+        }
+        
+        // Load scheduled notifications count
+        const scheduled = await getAllScheduledNotifications();
+        setScheduledNotificationsCount(scheduled.length);
+      } catch (error) {
+        console.log('Error loading notification preferences:', error);
+      }
+    };
+    
+    loadNotificationPreferences();
+  }, []);
+
+  // Save notification preferences
+  const saveNotificationPreferences = async () => {
+    try {
+      const prefs = {
+        enabled: notificationsEnabled,
+        bookingNotifications,
+        departureReminders,
+        favoriteNotifications
+      };
+      await AsyncStorage.setItem('notificationPreferences', JSON.stringify(prefs));
+    } catch (error) {
+      console.log('Error saving notification preferences:', error);
+    }
+  };
+
+  // Save preferences whenever they change
+  useEffect(() => {
+    saveNotificationPreferences();
+  }, [notificationsEnabled, bookingNotifications, departureReminders, favoriteNotifications]);
+
+  // View scheduled notifications
+  const viewScheduledNotifications = async () => {
+    try {
+      const scheduled = await getAllScheduledNotifications();
+      if (scheduled.length === 0) {
+        Alert.alert('No Scheduled Notifications', 'You have no upcoming notifications.');
+      } else {
+        const notificationsList = scheduled
+          .map(n => `• ${n.content.title}\n  ${new Date(n.trigger.value).toLocaleString()}`)
+          .join('\n\n');
+        Alert.alert(
+          `Scheduled Notifications (${scheduled.length})`,
+          notificationsList,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not load scheduled notifications.');
+    }
+  };
+
   return (
     <ScrollView style={[styles.container, isDark && styles.containerDark]}>
       <Animated.View style={{opacity: fadeAnim, transform: [{scale: scaleAnim}]}}>
@@ -433,6 +505,113 @@ export default function ProfileScreen() {
               trackColor={{false: '#e0e0e0', true: '#667eea'}}
               thumbColor="#fff"
             />
+          </View>
+
+          <View style={[styles.divider, isDark && styles.dividerDark]} />
+
+          {/* Notification Preferences Section */}
+          <View style={styles.notificationSection}>
+            <View style={styles.notificationHeader}>
+              <Feather name="bell" size={18} color={isDark ? '#64b5f6' : '#667eea'} />
+              <Text style={[styles.notificationSectionTitle, isDark && styles.settingLabelDark]}>Notifications</Text>
+              {scheduledNotificationsCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>{scheduledNotificationsCount}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                <Feather name="bell" size={18} color={isDark ? '#888' : '#666'} style={{marginRight: 12}} />
+                <View style={{flex: 1}}>
+                  <Text style={[styles.settingLabel, isDark && styles.settingLabelDark]}>Enable Notifications</Text>
+                  <Text style={[styles.settingDescription, isDark && styles.settingDescriptionDark]}>
+                    Receive alerts and updates
+                  </Text>
+                </View>
+              </View>
+              <Switch 
+                value={notificationsEnabled} 
+                onValueChange={setNotificationsEnabled}
+                trackColor={{false: '#e0e0e0', true: '#667eea'}}
+                thumbColor="#fff"
+              />
+            </View>
+
+            {notificationsEnabled && (
+              <>
+                <View style={styles.settingRow}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                    <Feather name="check-circle" size={18} color={isDark ? '#888' : '#666'} style={{marginRight: 12}} />
+                    <View style={{flex: 1}}>
+                      <Text style={[styles.settingLabel, isDark && styles.settingLabelDark]}>Booking Confirmations</Text>
+                      <Text style={[styles.settingDescription, isDark && styles.settingDescriptionDark]}>
+                        Get instant booking confirmations
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch 
+                    value={bookingNotifications} 
+                    onValueChange={setBookingNotifications}
+                    trackColor={{false: '#e0e0e0', true: '#667eea'}}
+                    thumbColor="#fff"
+                  />
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                    <Feather name="clock" size={18} color={isDark ? '#888' : '#666'} style={{marginRight: 12}} />
+                    <View style={{flex: 1}}>
+                      <Text style={[styles.settingLabel, isDark && styles.settingLabelDark]}>Departure Reminders</Text>
+                      <Text style={[styles.settingDescription, isDark && styles.settingDescriptionDark]}>
+                        Reminder 30 minutes before departure
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch 
+                    value={departureReminders} 
+                    onValueChange={setDepartureReminders}
+                    trackColor={{false: '#e0e0e0', true: '#667eea'}}
+                    thumbColor="#fff"
+                  />
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{flexDirection: 'row', alignItems: 'center', flex: 1}}>
+                    <Feather name="heart" size={18} color={isDark ? '#888' : '#666'} style={{marginRight: 12}} />
+                    <View style={{flex: 1}}>
+                      <Text style={[styles.settingLabel, isDark && styles.settingLabelDark]}>Favorite Updates</Text>
+                      <Text style={[styles.settingDescription, isDark && styles.settingDescriptionDark]}>
+                        Alerts when you add favorites
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch 
+                    value={favoriteNotifications} 
+                    onValueChange={setFavoriteNotifications}
+                    trackColor={{false: '#e0e0e0', true: '#667eea'}}
+                    thumbColor="#fff"
+                  />
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.viewNotificationsButton, isDark && styles.viewNotificationsButtonDark]}
+                  onPress={viewScheduledNotifications}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="list" size={18} color={isDark ? '#64b5f6' : '#667eea'} />
+                  <Text style={[styles.viewNotificationsText, isDark && styles.viewNotificationsTextDark]}>
+                    View Scheduled Notifications
+                  </Text>
+                  {scheduledNotificationsCount > 0 && (
+                    <View style={styles.notificationCountBadge}>
+                      <Text style={styles.notificationCountText}>{scheduledNotificationsCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -834,5 +1013,85 @@ const styles = StyleSheet.create({
   },
   settingLabelDark: {
     color: '#e0e0e0',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 16,
+  },
+  dividerDark: {
+    backgroundColor: '#2a2a3e',
+  },
+  notificationSection: {
+    marginTop: 8,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  notificationSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    color: '#333',
+    flex: 1,
+  },
+  notificationBadge: {
+    backgroundColor: '#ff6b9d',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  settingDescription: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  settingDescriptionDark: {
+    color: '#999',
+  },
+  viewNotificationsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+  },
+  viewNotificationsButtonDark: {
+    backgroundColor: '#16213e',
+  },
+  viewNotificationsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#667eea',
+    marginLeft: 8,
+    flex: 1,
+  },
+  viewNotificationsTextDark: {
+    color: '#64b5f6',
+  },
+  notificationCountBadge: {
+    backgroundColor: '#667eea',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  notificationCountText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 });

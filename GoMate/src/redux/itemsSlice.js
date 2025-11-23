@@ -1,6 +1,7 @@
 import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {fetchTransportItems as fetchFromApi} from '../api/transportApi';
+import {sendFavoriteAddedNotification} from '../services/notificationService';
 
 export const fetchItems = createAsyncThunk('items/fetchItems', async () => {
   try {
@@ -38,7 +39,11 @@ const itemsSlice = createSlice({
   reducers: {
     addFavorite(state, action) {
       const item = action.payload;
-      if (!state.favorites.find((f) => f.id === item.id)) state.favorites.push(item);
+      if (!state.favorites.find((f) => f.id === item.id)) {
+        state.favorites.push(item);
+        // Send notification when favorite is added
+        sendFavoriteAddedNotification(item.title);
+      }
       saveFavorites(state.favorites);
     },
     removeFavorite(state, action) {

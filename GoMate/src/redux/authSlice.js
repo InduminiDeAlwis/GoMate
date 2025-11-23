@@ -1,6 +1,7 @@
 import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import {loginApi, registerApi} from '../api/authApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {sendWelcomeNotification} from '../services/notificationService';
 
 const initialState = {user: null, isLoggedIn: false, loading: false, error: null, token: null};
 
@@ -47,6 +48,8 @@ export const registerUser = createAsyncThunk('auth/registerUser', async (payload
     // Try to call remote register for demo purposes, but don't fail if remote doesn't allow
     try {
       const res = await registerApi(payload);
+      // Send welcome notification
+      sendWelcomeNotification(payload.username);
       // Try auto-login via remote
       try {
         const loginRes = await loginApi({username: payload.username, password: payload.password});
@@ -57,6 +60,8 @@ export const registerUser = createAsyncThunk('auth/registerUser', async (payload
       }
     } catch (e) {
       // remote register failed/unsupported — still allow local registration
+      // Send welcome notification for local registration
+      sendWelcomeNotification(payload.username);
       return {username: payload.username, firstName: payload.firstName || '', lastName: payload.lastName || '', token: `local-${Date.now()}`};
     }
   } catch (e) {

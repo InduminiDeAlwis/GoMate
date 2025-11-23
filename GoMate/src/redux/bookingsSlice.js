@@ -1,6 +1,7 @@
 import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {bookTransportItem as apiBookTransportItem} from '../api/transportApi';
+import {sendBookingConfirmation, scheduleDepartureReminder} from '../services/notificationService';
 
 const BOOKINGS_KEY = '@bookings';
 
@@ -17,6 +18,13 @@ export const loadBookings = createAsyncThunk('bookings/load', async () => {
 export const bookItem = createAsyncThunk('bookings/bookItem', async ({itemId, user}, thunkAPI) => {
   // call API (mock) to create booking
   const res = await apiBookTransportItem(itemId, {user});
+  
+  // Send booking confirmation notification
+  await sendBookingConfirmation(res);
+  
+  // Schedule departure reminder (30 minutes before)
+  await scheduleDepartureReminder(res, 30);
+  
   // read current stored bookings and append
   try {
     const raw = await AsyncStorage.getItem(BOOKINGS_KEY);
