@@ -17,22 +17,74 @@ export default function HomeScreen({navigation}) {
   const [refreshing, setRefreshing] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const searchAnimation = useState(new Animated.Value(0))[0];
+  const avatarScale = useState(new Animated.Value(1))[0];
+  const scrollY = useState(new Animated.Value(0))[0];
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0.8],
+    extrapolate: 'clamp',
+  });
 
   useEffect(() => {
     navigation.setOptions({
-      title: 'GoMate',
+      title: '',
+      headerStyle: {
+        backgroundColor: '#0a7ea4',
+      },
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: '800',
+        fontSize: 20,
+      },
+      headerLeft: () => (
+        <View style={{marginLeft: 16, flexDirection: 'row', alignItems: 'center'}}>
+          <View style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+          }}>
+            <Feather name="map" size={20} color="#fff" />
+          </View>
+          <Text style={{color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 0.5}}>GoMate</Text>
+        </View>
+      ),
       headerRight: () => (
-        <TouchableOpacity style={{flexDirection: 'row', alignItems: 'center'}} onPress={() => navigation.navigate('Profile')}>
-          {authUser?.imageUrl ? (
-            <Image source={{uri: authUser.imageUrl}} style={{width: 28, height: 28, borderRadius: 14, marginRight: 8}} />
-          ) : (
-            <Feather name="user" size={18} color="#007AFF" style={{marginRight: 6}} />
-          )}
-          <Text style={{color: '#007AFF', marginRight: 8}}>{displayName}</Text>
+        <TouchableOpacity 
+          style={{flexDirection: 'row', alignItems: 'center', marginRight: 16}} 
+          onPress={() => {
+            Animated.sequence([
+              Animated.timing(avatarScale, {toValue: 0.9, duration: 100, useNativeDriver: true}),
+              Animated.spring(avatarScale, {toValue: 1, useNativeDriver: true, tension: 300, friction: 10})
+            ]).start();
+            navigation.navigate('Profile');
+          }}
+          activeOpacity={0.8}
+        >
+          <Animated.View style={{
+            transform: [{scale: avatarScale}],
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            borderRadius: 20,
+          }}>
+            {authUser?.imageUrl ? (
+              <Image source={{uri: authUser.imageUrl}} style={{width: 28, height: 28, borderRadius: 14, marginRight: 8}} />
+            ) : (
+              <Feather name="user" size={18} color="#fff" style={{marginRight: 8}} />
+            )}
+            <Text style={{color: '#fff', fontWeight: '600', fontSize: 14}}>{displayName}</Text>
+            <Feather name="chevron-right" size={16} color="#fff" style={{marginLeft: 4}} />
+          </Animated.View>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, username]);
+  }, [navigation, username, displayName, authUser, avatarScale]);
 
   useEffect(() => {
     dispatch(fetchItems());
@@ -71,65 +123,65 @@ export default function HomeScreen({navigation}) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#0a7ea4', '#1e90ff', '#4db8ff']}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={styles.gradientHeader}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.welcomeSection}>
-            <View style={styles.iconRow}>
-              <Feather name="map" size={28} color="#fff" style={{marginRight: 8}} />
-              <Text style={styles.appTitle}>GoMate</Text>
+      <Animated.View style={{opacity: headerOpacity}}>
+        <LinearGradient
+          colors={['#0a7ea4', '#1e90ff', '#4db8ff']}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 1}}
+          style={styles.gradientHeader}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.welcomeSection}>
+              <View style={styles.iconRow}>
+              </View>
+              <Text style={styles.tagline}>Your journey starts here ✈️</Text>
+              <Text style={styles.subtitle}>Explore transport schedules & destinations</Text>
             </View>
-            <Text style={styles.tagline}>Your journey starts here ✈️</Text>
-            <Text style={styles.subtitle}>Explore transport schedules & destinations</Text>
-          </View>
-          
-          {/* Quota warning banner */}
-          {showQuotaWarning ? (
-            <View style={styles.quotaWarning}>
-              <Feather name="alert-circle" size={16} color="#ff9500" style={{marginRight: 8}} />
-              <Text style={styles.quotaText}>
-                📊 Sample data mode (API resets in 24h)
-              </Text>
-            </View>
-          ) : null}
-          
-          <View style={[styles.searchRow, searchFocused && styles.searchRowFocused]}>
-            <View style={styles.searchIcon}>
-              <Feather name="search" size={20} color="#0a7ea4" />
-            </View>
-            <TextInput 
-              placeholder="Search stops, stations, routes..." 
-              placeholderTextColor="#999"
-              value={query} 
-              onChangeText={setQuery}
-              onFocus={() => {
-                setSearchFocused(true);
-                Animated.spring(searchAnimation, {
-                  toValue: 1,
-                  useNativeDriver: false,
-                }).start();
-              }}
-              onBlur={() => {
-                setSearchFocused(false);
-                Animated.spring(searchAnimation, {
-                  toValue: 0,
-                  useNativeDriver: false,
-                }).start();
-              }}
-              style={styles.searchInput} 
-            />
-            {query ? (
-              <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
-                <Feather name="x-circle" size={18} color="#999" />
-              </TouchableOpacity>
+            
+            {/* Quota warning banner */}
+            {showQuotaWarning ? (
+              <View style={styles.quotaWarning}>
+                <Feather name="alert-circle" size={16} color="#ff9500" style={{marginRight: 8}} />
+                <Text style={styles.quotaText}>
+                  📊 Sample data mode (API resets in 24h)
+                </Text>
+              </View>
             ) : null}
+            
+            <View style={[styles.searchRow, searchFocused && styles.searchRowFocused]}>
+              <View style={styles.searchIcon}>
+                <Feather name="search" size={20} color="#0a7ea4" />
+              </View>
+              <TextInput 
+                placeholder="Search stops, stations, routes..." 
+                placeholderTextColor="#999"
+                value={query} 
+                onChangeText={setQuery}
+                onFocus={() => {
+                  setSearchFocused(true);
+                  Animated.spring(searchAnimation, {
+                    toValue: 1,
+                    useNativeDriver: false,
+                  }).start();
+                }}
+                onBlur={() => {
+                  setSearchFocused(false);
+                  Animated.spring(searchAnimation, {
+                    toValue: 0,
+                    useNativeDriver: false,
+                  }).start();
+                }}
+                style={styles.searchInput} 
+              />
+              {query ? (
+                <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
+                  <Feather name="x-circle" size={18} color="#999" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </Animated.View>
 
       <FlatList
         data={filtered}
@@ -137,6 +189,11 @@ export default function HomeScreen({navigation}) {
         renderItem={({item}) => (
           <ItemCard item={item} onPress={() => navigation.navigate('Details', {item})} />
         )}
+        onScroll={Animated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: false}
+        )}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing || loading} onRefresh={onRefresh} tintColor="#0a7ea4" colors={['#0a7ea4', '#1e90ff']} />}
         ListHeaderComponent={() => (
@@ -188,6 +245,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  animatedIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+  planeBadge: {
+    marginLeft: 8,
+    backgroundColor: '#fff',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   appTitle: {
     fontSize: 28,

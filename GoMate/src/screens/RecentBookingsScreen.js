@@ -12,6 +12,7 @@ export default function RecentBookingsScreen() {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
+  const [clockRotate] = useState(new Animated.Value(0));
 
   useEffect(() => {
     dispatch(loadBookings());
@@ -29,6 +30,15 @@ export default function RecentBookingsScreen() {
         useNativeDriver: true
       })
     ]).start();
+    
+    // Clock tick animation
+    Animated.loop(
+      Animated.timing(clockRotate, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      })
+    ).start();
   }, [dispatch]);
 
   const openDetails = (booking) => {
@@ -64,8 +74,24 @@ export default function RecentBookingsScreen() {
       >
         <Animated.View style={{opacity: fadeAnim, transform: [{translateY: slideAnim}]}}>
           <View style={styles.headerContent}>
-            <Feather name="clock" size={32} color="#fff" />
-            <Text style={styles.headerTitle}>My Bookings</Text>
+            <View style={styles.headerRow}>
+              <View style={styles.clockContainer}>
+                <Animated.View style={{
+                  transform: [{
+                    rotate: clockRotate.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '30deg'],
+                    })
+                  }]
+                }}>
+                  <Feather name="clock" size={28} color="#fff" />
+                </Animated.View>
+              </View>
+              <Text style={styles.headerTitle}>My Bookings</Text>
+              <View style={styles.ticketBadge}>
+                <Feather name="map" size={16} color="#0a7ea4" />
+              </View>
+            </View>
             <Text style={styles.headerSubtitle}>
               {bookings.length} {bookings.length === 1 ? 'booking' : 'bookings'} found
             </Text>
@@ -245,7 +271,36 @@ const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: '#f5f5f5'},
   gradientHeader: {paddingTop: 60, paddingBottom: 30, paddingHorizontal: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: {width: 0, height: 4}},
   headerContent: {alignItems: 'center'},
-  headerTitle: {fontSize: 28, fontWeight: '800', color: '#fff', marginTop: 12, marginBottom: 4},
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  clockContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  ticketBadge: {
+    marginLeft: 12,
+    backgroundColor: '#fff',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  headerTitle: {fontSize: 28, fontWeight: '800', color: '#fff'},
   headerSubtitle: {fontSize: 14, color: '#e6f7ff', fontWeight: '600'},
   listContent: {padding: 16, paddingTop: 20},
   bookingCard: {backgroundColor: '#fff', borderRadius: 16, marginBottom: 16, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: {width: 0, height: 2}, overflow: 'hidden'},

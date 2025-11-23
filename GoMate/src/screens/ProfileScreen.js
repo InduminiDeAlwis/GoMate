@@ -27,6 +27,7 @@ export default function ProfileScreen() {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [avatarScale] = useState(new Animated.Value(1));
+  const [compassRotate] = useState(new Animated.Value(0));
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successScale] = useState(new Animated.Value(0));
   const [successOpacity] = useState(new Animated.Value(0));
@@ -52,6 +53,55 @@ export default function ProfileScreen() {
   ];
 
   useEffect(() => {
+    // Set navigation header
+    navigation.setOptions({
+      title: '',
+      headerStyle: {
+        backgroundColor: '#667eea',
+      },
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: '800',
+        fontSize: 20,
+      },
+      headerLeft: () => (
+        <View style={{marginLeft: 16, flexDirection: 'row', alignItems: 'center'}}>
+          <Animated.View style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 8,
+            transform: [{
+              rotate: compassRotate.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '360deg'],
+              })
+            }],
+          }}>
+            <Feather name="compass" size={20} color="#fff" />
+          </Animated.View>
+          <Text style={{color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: 0.5}}>Profile</Text>
+        </View>
+      ),
+      headerRight: () => (
+        <View style={{marginRight: 16, flexDirection: 'row', alignItems: 'center'}}>
+          <View style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Feather name="settings" size={18} color="#fff" />
+          </View>
+        </View>
+      ),
+    });
+    
     dispatch(loadBookings());
     
     // Entrance animation
@@ -68,7 +118,16 @@ export default function ProfileScreen() {
         friction: 7
       })
     ]).start();
-  }, [dispatch]);
+    
+    // Continuous compass rotation
+    Animated.loop(
+      Animated.timing(compassRotate, {
+        toValue: 1,
+        duration: 8000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, [dispatch, navigation, compassRotate]);
 
   // Animate success modal
   useEffect(() => {
@@ -251,6 +310,24 @@ export default function ProfileScreen() {
           end={{x: 1, y: 1}}
           style={styles.gradientHeader}
         >
+          <View style={styles.headerTopRow}>
+            <View style={styles.compassContainer}>
+              <Animated.View style={{
+                transform: [{
+                  rotate: compassRotate.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '360deg'],
+                  })
+                }]
+              }}>
+                <Feather name="compass" size={24} color="#fff" />
+              </Animated.View>
+            </View>
+            <Text style={styles.profileBadge}>Traveler Profile</Text>
+            <View style={styles.travelIconBadge}>
+              <Feather name="globe" size={20} color="#667eea" />
+            </View>
+          </View>
           <View style={styles.headerContent}>
             {/* Avatar */}
             <TouchableOpacity 
@@ -625,6 +702,41 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: '#f5f5f5'},
   gradientHeader: {paddingTop: 60, paddingBottom: 40, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30},
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  compassContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  profileBadge: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  travelIconBadge: {
+    marginLeft: 12,
+    backgroundColor: '#fff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   headerContent: {alignItems: 'center'},
   avatarContainer: {position: 'relative', marginBottom: 16},
   avatar: {width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: '#fff'},
