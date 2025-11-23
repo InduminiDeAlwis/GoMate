@@ -25,6 +25,8 @@ export default function DetailsScreen({route}) {
   const [seats, setSeats] = useState(1);
   const [selectedScheduleIndex, setSelectedScheduleIndex] = useState(0);
   const [lastBooking, setLastBooking] = useState(null);
+  const [selectedScheduleForMap, setSelectedScheduleForMap] = useState(null);
+  const [mapRegion, setMapRegion] = useState(null);
 
   // Refresh schedule data on demand
   const handleRefreshSchedule = useCallback(async () => {
@@ -177,7 +179,20 @@ export default function DetailsScreen({route}) {
           </View>
           {item.schedule && item.schedule.length > 0 ? (
             item.schedule.map((s, idx) => (
-              <View key={idx} style={styles.scheduleRow}>
+              <TouchableOpacity 
+                key={idx} 
+                style={[styles.scheduleRow, selectedScheduleForMap?.time === s.time ? styles.scheduleRowSelected : null]}
+                onPress={() => {
+                  // Mock destination coordinates (offset from origin)
+                  if (item.latitude && item.longitude) {
+                    const destCoords = {
+                      latitude: item.latitude + (Math.random() * 0.02 - 0.01),
+                      longitude: item.longitude + (Math.random() * 0.02 - 0.01),
+                    };
+                    setSelectedScheduleForMap({...s, destination_coords: destCoords});
+                  }
+                }}
+              >
                 <View style={styles.scheduleTimeBox}>
                   <Text style={styles.scheduleTime}>{s.time || s.aimed_departure_time || s.departure_time || '-'}</Text>
                   {s.platform ? <Text style={styles.platformText}>Plat {s.platform}</Text> : null}
@@ -189,16 +204,19 @@ export default function DetailsScreen({route}) {
                     <Text style={styles.scheduleStatus}>{s.status}</Text>
                   ) : null}
                 </View>
-                {s.expected_departure_time && s.expected_departure_time !== s.time && s.expected_departure_time !== s.aimed_departure_time ? (
-                  <View style={styles.delayBadge}>
-                    <Text style={styles.delayText}>Delayed</Text>
-                  </View>
-                ) : s.status && s.status.toLowerCase() === 'on time' ? (
-                  <View style={[styles.delayBadge, {backgroundColor: '#34C759'}]}>
-                    <Text style={styles.delayText}>On Time</Text>
-                  </View>
-                ) : null}
-              </View>
+                <View style={{alignItems: 'flex-end'}}>
+                  {s.expected_departure_time && s.expected_departure_time !== s.time && s.expected_departure_time !== s.aimed_departure_time ? (
+                    <View style={styles.delayBadge}>
+                      <Text style={styles.delayText}>Delayed</Text>
+                    </View>
+                  ) : s.status && s.status.toLowerCase() === 'on time' ? (
+                    <View style={[styles.delayBadge, {backgroundColor: '#34C759'}]}>
+                      <Text style={styles.delayText}>On Time</Text>
+                    </View>
+                  ) : null}
+                  <Feather name="map-pin" size={14} color="#999" style={{marginTop: 4}} />
+                </View>
+              </TouchableOpacity>
             ))
           ) : (
             <Text style={styles.noData}>No schedule data available</Text>
@@ -206,29 +224,63 @@ export default function DetailsScreen({route}) {
         </View>
       ) : null}
 
-      {item.stops ? (
+      {/* Enhanced Map Section with Route and Destinations */}
+      {(item.latitude && item.longitude) || (item.stops && item.stops.length > 0) ? (
         <View style={{width: '100%', marginTop: 16}}>
-          <Text style={{fontWeight: '700', marginBottom: 8}}>Stops</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Route & Location</Text>
+            {selectedScheduleForMap ? (
+              <TouchableOpacity onPress={() => setSelectedScheduleForMap(null)} style={styles.clearMapBtn}>
+                <Text style={styles.clearMapText}>Show All</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
 
-          {/* Map showing stops if coordinates available */}
+          {/* Map showing route and destinations */}
           {item.stops && item.stops.some((s) => s.latitude && s.longitude) ? (
             <MapView
-              style={{width: '100%', height: 220, borderRadius: 8}}
-              initialRegion={{
+              style={{width: '100%', height: 280, borderRadius: 12, marginBottom: 8}}
+              initialRegion={mapRegion || {
                 latitude: item.stops[0].latitude,
                 longitude: item.stops[0].longitude,
                 latitudeDelta: 0.02,
                 longitudeDelta: 0.02,
               }}
+              onRegionChangeComplete={setMapRegion}
             >
-              {item.stops.map((s, idx) => (
-                <Marker key={idx} coordinate={{latitude: s.latitude, longitude: s.longitude}} title={s.name} />
+              {/* Origin marker (current stop/station) */}
+              <Marker 
+                coordinate={{latitude: item.stops[0].latitude, longitude: item.stops[0].longitude}} 
+                title={item.title}
+                description="Current Location"
+                pinColor="#0a84ff"
+              />
+              
+              {/* Other stops along the route */}
+              {item.stops.slice(1).map((s, idx) => (
+                <Marker 
+                  key={idx} 
+                  coordinate={{latitude: s.latitude, longitude: s.longitude}} 
+                  title={s.name}
+                  description={`Stop ${idx + 2}`}
+                  pinColor="#34C759"
+                />
               ))}
+              
+              {/* Destination markers from schedule */}
+              {selectedScheduleForMap && selectedScheduleForMap.destination_coords ? (
+                <Marker
+                  coordinate={selectedScheduleForMap.destination_coords}
+                  title={selectedScheduleForMap.dest}
+                  description={`Arrives: ${selectedScheduleForMap.time}`}
+                  pinColor="#ff3b30"
+                />
+              ) : null}
             </MapView>
           ) : item.latitude && item.longitude ? (
-            // If list item provided single coords, show a single-marker map
+            // Single location map
             <MapView
-              style={{width: '100%', height: 220, borderRadius: 8}}
+              style={{width: '100%', height: 280, borderRadius: 12, marginBottom: 8}}
               initialRegion={{
                 latitude: item.latitude,
                 longitude: item.longitude,
@@ -236,12 +288,39 @@ export default function DetailsScreen({route}) {
                 longitudeDelta: 0.02,
               }}
             >
-              <Marker coordinate={{latitude: item.latitude, longitude: item.longitude}} title={item.title} />
+              <Marker 
+                coordinate={{latitude: item.latitude, longitude: item.longitude}} 
+                title={item.title}
+                description="Current Location"
+                pinColor="#0a84ff"
+              />
             </MapView>
           ) : (
             // Fallback: list stops as text if coordinates not available
-            (item.stops || []).map((s, idx) => <Text key={idx} style={styles.stopItem}>• {s.name}</Text>)
+            <View style={{padding: 12, backgroundColor: '#f5f5f5', borderRadius: 8}}>
+              {(item.stops || []).map((s, idx) => (
+                <Text key={idx} style={styles.stopItem}>• {s.name}</Text>
+              ))}
+            </View>
           )}
+          
+          {/* Map Legend */}
+          <View style={styles.mapLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, {backgroundColor: '#0a84ff'}]} />
+              <Text style={styles.legendText}>Current Stop</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, {backgroundColor: '#34C759'}]} />
+              <Text style={styles.legendText}>Route Stops</Text>
+            </View>
+            {selectedScheduleForMap ? (
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, {backgroundColor: '#ff3b30'}]} />
+                <Text style={styles.legendText}>Destination</Text>
+              </View>
+            ) : null}
+          </View>
 
           {/* Actions: Book / Directions */}
           <View style={{flexDirection: 'row', marginTop: 16, width: '100%', justifyContent: 'space-between'}}>
@@ -383,6 +462,7 @@ const styles = StyleSheet.create({
   sectionTitle: {fontSize: 18, fontWeight: '700', color: '#1a1a1a'},
   refreshBtn: {padding: 8, borderRadius: 20, backgroundColor: '#f0f0f0'},
   scheduleRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e8e8e8', backgroundColor: '#fff', paddingHorizontal: 12, borderRadius: 8, marginBottom: 6},
+  scheduleRowSelected: {backgroundColor: '#e3f2fd', borderColor: '#0a84ff', borderWidth: 2},
   scheduleTimeBox: {backgroundColor: '#0a7ea4', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginRight: 12},
   scheduleTime: {fontWeight: '700', fontSize: 15, color: '#fff'},
   scheduleDest: {fontSize: 15, fontWeight: '600', color: '#1a1a1a'},
@@ -402,4 +482,10 @@ const styles = StyleSheet.create({
   scheduleChipActive: {backgroundColor: '#0a84ff'},
   modalButton: {flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginRight: 8},
   modalButtonPrimary: {backgroundColor: '#0a84ff'},
+  mapLegend: {flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8, backgroundColor: '#f8f9fa', borderRadius: 8, marginTop: 8},
+  legendItem: {flexDirection: 'row', alignItems: 'center'},
+  legendDot: {width: 10, height: 10, borderRadius: 5, marginRight: 6},
+  legendText: {fontSize: 12, color: '#666'},
+  clearMapBtn: {backgroundColor: '#0a84ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16},
+  clearMapText: {color: 'white', fontSize: 12, fontWeight: '600'},
 });
