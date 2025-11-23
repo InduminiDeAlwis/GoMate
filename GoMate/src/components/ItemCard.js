@@ -1,27 +1,30 @@
 import React from 'react';
 import {View, Text, StyleSheet, Image, TouchableOpacity} from 'react-native';
+import {useSelector} from 'react-redux';
 import FavoriteButton from './FavoriteButton';
 import {Feather} from '@expo/vector-icons';
 
 export default function ItemCard({item, onPress}) {
+  const theme = useSelector((s) => s.theme.mode);
+  const isDark = theme === 'dark';
   const statusColor = item.status === 'Active' ? '#34C759' : item.status === 'Popular' ? '#ff9500' : '#0a84ff';
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.card, isDark && styles.cardDark]} onPress={onPress} activeOpacity={0.7}>
       <Image source={{uri: item.thumbnail || item.images?.[0]}} style={styles.image} />
 
       <View style={styles.content}>
         <View style={styles.rowTop}>
-          <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+          <Text style={[styles.title, isDark && styles.titleDark]} numberOfLines={1}>{item.title}</Text>
           <FavoriteButton item={item} />
         </View>
 
-        <Text numberOfLines={2} style={styles.desc}>{item.description}</Text>
+        <Text numberOfLines={2} style={[styles.desc, isDark && styles.descDark]}>{item.description}</Text>
 
         <View style={styles.footer}>
           <View style={styles.metaRow}>
-            <Feather name="map-pin" size={14} color="#0a7ea4" />
-            <Text style={styles.metaText}>{item.type || 'Transport'}</Text>
+            <Feather name="map-pin" size={14} color={isDark ? '#64b5f6' : '#0a7ea4'} />
+            <Text style={[styles.metaText, isDark && styles.metaTextDark]}>{item.type || 'Transport'}</Text>
           </View>
           <View style={[styles.badge, {backgroundColor: statusColor}]}> 
             <Text style={styles.badgeText}>{item.status}</Text>

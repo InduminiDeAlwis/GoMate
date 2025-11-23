@@ -13,6 +13,7 @@ export default function ProfileScreen() {
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
   const theme = useSelector((s) => s.theme.mode);
+  const isDark = theme === 'dark';
   const bookings = useSelector((s) => s.bookings.bookings || []);
   const navigation = useNavigation();
 
@@ -57,7 +58,7 @@ export default function ProfileScreen() {
     navigation.setOptions({
       title: '',
       headerStyle: {
-        backgroundColor: '#667eea',
+        backgroundColor: isDark ? '#1a1a2e' : '#667eea',
       },
       headerTintColor: '#fff',
       headerTitleStyle: {
@@ -301,11 +302,11 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, isDark && styles.containerDark]}>
       <Animated.View style={{opacity: fadeAnim, transform: [{scale: scaleAnim}]}}>
         {/* Header with Gradient */}
         <LinearGradient
-          colors={['#667eea', '#764ba2', '#f093fb']}
+          colors={isDark ? ['#1a1a2e', '#16213e', '#533483'] : ['#667eea', '#764ba2', '#f093fb']}
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
           style={styles.gradientHeader}
@@ -324,8 +325,8 @@ export default function ProfileScreen() {
               </Animated.View>
             </View>
             <Text style={styles.profileBadge}>Traveler Profile</Text>
-            <View style={styles.travelIconBadge}>
-              <Feather name="globe" size={20} color="#667eea" />
+            <View style={[styles.travelIconBadge, isDark && styles.travelIconBadgeDark]}>
+              <Feather name="globe" size={20} color={isDark ? '#64b5f6' : '#667eea'} />
             </View>
           </View>
           <View style={styles.headerContent}>
@@ -363,36 +364,36 @@ export default function ProfileScreen() {
         </LinearGradient>
 
         {/* Profile Form Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, isDark && styles.cardDark]}>
           <View style={styles.cardHeader}>
-            <Feather name="user" size={20} color="#667eea" />
-            <Text style={styles.cardTitle}>Personal Information</Text>
+            <Feather name="user" size={20} color={isDark ? '#64b5f6' : '#667eea'} />
+            <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>Personal Information</Text>
           </View>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>First Name</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="user" size={16} color="#999" style={{marginRight: 8}} />
+            <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>First Name</Text>
+            <View style={[styles.inputContainer, isDark && styles.inputContainerDark]}>
+              <Feather name="user" size={16} color={isDark ? '#888' : '#999'} style={{marginRight: 8}} />
               <TextInput 
-                style={styles.input} 
+                style={[styles.input, isDark && styles.inputDark]} 
                 value={firstName} 
                 onChangeText={setFirstName} 
                 placeholder="Enter first name"
-                placeholderTextColor="#999"
+                placeholderTextColor={isDark ? '#666' : '#999'}
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Last Name</Text>
-            <View style={styles.inputContainer}>
-              <Feather name="user" size={16} color="#999" style={{marginRight: 8}} />
+            <Text style={[styles.inputLabel, isDark && styles.inputLabelDark]}>Last Name</Text>
+            <View style={[styles.inputContainer, isDark && styles.inputContainerDark]}>
+              <Feather name="user" size={16} color={isDark ? '#888' : '#999'} style={{marginRight: 8}} />
               <TextInput 
-                style={styles.input} 
+                style={[styles.input, isDark && styles.inputDark]} 
                 value={lastName} 
                 onChangeText={setLastName} 
                 placeholder="Enter last name"
-                placeholderTextColor="#999"
+                placeholderTextColor={isDark ? '#666' : '#999'}
               />
             </View>
           </View>
@@ -415,16 +416,16 @@ export default function ProfileScreen() {
         </View>
 
         {/* Settings Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, isDark && styles.cardDark]}>
           <View style={styles.cardHeader}>
-            <Feather name="settings" size={20} color="#667eea" />
-            <Text style={styles.cardTitle}>Preferences</Text>
+            <Feather name="settings" size={20} color={isDark ? '#64b5f6' : '#667eea'} />
+            <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>Preferences</Text>
           </View>
           
           <View style={styles.settingRow}>
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <Feather name="moon" size={18} color="#666" style={{marginRight: 12}} />
-              <Text style={styles.settingLabel}>Dark Mode</Text>
+              <Feather name="moon" size={18} color={isDark ? '#888' : '#666'} style={{marginRight: 12}} />
+              <Text style={[styles.settingLabel, isDark && styles.settingLabelDark]}>Dark Mode</Text>
             </View>
             <Switch 
               value={theme === 'dark'} 
@@ -436,10 +437,10 @@ export default function ProfileScreen() {
         </View>
 
         {/* Recent Bookings Card */}
-        <View style={styles.card}>
+        <View style={[styles.card, isDark && styles.cardDark]}>
           <View style={styles.cardHeader}>
-            <Feather name="clock" size={20} color="#667eea" />
-            <Text style={styles.cardTitle}>Recent Bookings</Text>
+            <Feather name="clock" size={20} color={isDark ? '#64b5f6' : '#667eea'} />
+            <Text style={[styles.cardTitle, isDark && styles.cardTitleDark]}>Recent Bookings</Text>
           </View>
           
           {bookings.slice(0, 3).length > 0 ? (
@@ -807,4 +808,31 @@ const styles = StyleSheet.create({
   cancelButtonText: {fontSize: 16, fontWeight: '700', color: '#666'},
   confirmLogoutButton: {flex: 1, flexDirection: 'row', backgroundColor: '#FF3B30', paddingVertical: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#FF3B30', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: {width: 0, height: 4}},
   confirmLogoutText: {fontSize: 16, fontWeight: '700', color: '#fff'},
+  // Dark mode styles
+  containerDark: {
+    backgroundColor: '#0f0f1e',
+  },
+  travelIconBadgeDark: {
+    backgroundColor: '#2a2a3e',
+  },
+  cardDark: {
+    backgroundColor: '#1a1a2e',
+    borderColor: '#2a2a3e',
+  },
+  cardTitleDark: {
+    color: '#e0e0e0',
+  },
+  inputLabelDark: {
+    color: '#b0b0b0',
+  },
+  inputContainerDark: {
+    backgroundColor: '#16213e',
+    borderColor: '#2a2a3e',
+  },
+  inputDark: {
+    color: '#e0e0e0',
+  },
+  settingLabelDark: {
+    color: '#e0e0e0',
+  },
 });

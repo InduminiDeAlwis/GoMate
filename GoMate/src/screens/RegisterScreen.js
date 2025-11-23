@@ -1,5 +1,6 @@
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Animated, ScrollView} from 'react-native';
+import {LinearGradient} from 'expo-linear-gradient';
 import {Formik} from 'formik';
 import * as Yup from 'yup';
 import {useDispatch, useSelector} from 'react-redux';
@@ -10,6 +11,10 @@ export default function RegisterScreen({navigation}) {
   const dispatch = useDispatch();
   const auth = useSelector((s) => s.auth);
   const [showPassword, setShowPassword] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
+  const [logoScale] = useState(new Animated.Value(0.8));
+  const [globeSpin] = useState(new Animated.Value(0));
 
   const schema = Yup.object().shape({
     username: Yup.string().min(3).required('Username required'),
@@ -18,87 +23,247 @@ export default function RegisterScreen({navigation}) {
     lastName: Yup.string().optional(),
   });
 
+  useEffect(() => {
+    // Entrance animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Globe spin animation
+    Animated.loop(
+      Animated.timing(globeSpin, {
+        toValue: 1,
+        duration: 4000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+
+  const spinInterpolate = globeSpin.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={styles.title}>Create Account</Text>
-      <Formik
-        initialValues={{username: '', password: '', firstName: '', lastName: ''}}
-        validationSchema={schema}
-        onSubmit={(values) => {
-          dispatch(registerUser(values));
-        }}
-      >
-        {({handleChange, handleBlur, handleSubmit, values, errors, touched}) => (
-          <View style={styles.form}>
-            <View style={styles.inputRow}>
-              <Feather name="user" size={18} color="#666" style={{marginRight: 8}} />
-              <TextInput
-                placeholder="Username"
-                style={styles.input}
-                onChangeText={handleChange('username')}
-                onBlur={handleBlur('username')}
-                value={values.username}
-                autoCapitalize="none"
-              />
-            </View>
-            {touched.username && errors.username && <Text style={styles.err}>{errors.username}</Text>}
-
-            <View style={styles.inputRow}>
-              <Feather name="lock" size={18} color="#666" style={{marginRight: 8}} />
-              <TextInput
-                placeholder="Password"
-                secureTextEntry={!showPassword}
-                style={styles.input}
-                onChangeText={handleChange('password')}
-                onBlur={handleBlur('password')}
-                value={values.password}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={{padding: 6}}>
-                <Feather name={showPassword ? 'eye' : 'eye-off'} size={16} color="#666" />
-              </TouchableOpacity>
-            </View>
-            {touched.password && errors.password && <Text style={styles.err}>{errors.password}</Text>}
-
-            <View style={styles.rowSmall}>
-              <View style={{flex: 1, marginRight: 6}}>
-                <TextInput placeholder="First name" style={styles.inputSimple} onChangeText={handleChange('firstName')} value={values.firstName} />
+    <View style={{flex: 1}}>
+      <LinearGradient
+        colors={['#667eea', '#764ba2', '#f093fb']}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.gradient}>
+        <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+            {/* Animated Header */}
+            <Animated.View style={[styles.header, {opacity: fadeAnim, transform: [{scale: logoScale}]}]}>
+              <View style={styles.logoContainer}>
+                <Animated.View style={{transform: [{rotate: spinInterpolate}]}}>
+                  <Feather name="globe" size={64} color="#fff" />
+                </Animated.View>
               </View>
-              <View style={{flex: 1, marginLeft: 6}}>
-                <TextInput placeholder="Last name" style={styles.inputSimple} onChangeText={handleChange('lastName')} value={values.lastName} />
+              <Text style={styles.logo}>Join GoMate</Text>
+              <Text style={styles.subtitle}>Start Your Adventure Today</Text>
+              <View style={styles.taglineRow}>
+                <Feather name="users" size={16} color="rgba(255, 255, 255, 0.9)" />
+                <Text style={styles.tagline}>Connect • Explore • Travel</Text>
               </View>
-            </View>
+            </Animated.View>
+            {/* Form Card */}
+            <Formik
+              initialValues={{username: '', password: '', firstName: '', lastName: ''}}
+              validationSchema={schema}
+              onSubmit={(values) => {
+                dispatch(registerUser(values));
+              }}
+            >
+              {({handleChange, handleBlur, handleSubmit, values, errors, touched}) => (
+                <Animated.View style={[styles.card, {opacity: fadeAnim, transform: [{translateY: slideAnim}]}]}>
+                  <Text style={styles.cardTitle}>Create Account</Text>
+                  
+                  <View style={styles.inputContainer}>
+                    <View style={styles.iconCircle}>
+                      <Feather name="user" size={18} color="#667eea" />
+                    </View>
+                    <TextInput
+                      placeholder="Username"
+                      placeholderTextColor="#999"
+                      style={styles.input}
+                      onChangeText={handleChange('username')}
+                      onBlur={handleBlur('username')}
+                      value={values.username}
+                      autoCapitalize="none"
+                    />
+                  </View>
+                  {touched.username && errors.username && <Text style={styles.err}>{errors.username}</Text>}
 
-            {auth.error ? <Text style={styles.err}>{auth.error}</Text> : null}
+                  <View style={styles.inputContainer}>
+                    <View style={styles.iconCircle}>
+                      <Feather name="lock" size={18} color="#667eea" />
+                    </View>
+                    <TextInput
+                      placeholder="Password"
+                      placeholderTextColor="#999"
+                      secureTextEntry={!showPassword}
+                      style={styles.input}
+                      onChangeText={handleChange('password')}
+                      onBlur={handleBlur('password')}
+                      value={values.password}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
+                      <Feather name={showPassword ? 'eye' : 'eye-off'} size={18} color="#667eea" />
+                    </TouchableOpacity>
+                  </View>
+                  {touched.password && errors.password && <Text style={styles.err}>{errors.password}</Text>}
 
-            <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={auth.loading}>
-              {auth.loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Register</Text>}
-            </TouchableOpacity>
+                  <View style={styles.nameRow}>
+                    <View style={[styles.inputContainer, {flex: 1, marginRight: 8}]}>
+                      <Feather name="edit-3" size={16} color="#667eea" style={{marginRight: 12}} />
+                      <TextInput
+                        placeholder="First name"
+                        placeholderTextColor="#999"
+                        style={styles.input}
+                        onChangeText={handleChange('firstName')}
+                        value={values.firstName}
+                      />
+                    </View>
+                    <View style={[styles.inputContainer, {flex: 1, marginLeft: 8}]}>
+                      <Feather name="edit-3" size={16} color="#667eea" style={{marginRight: 12}} />
+                      <TextInput
+                        placeholder="Last name"
+                        placeholderTextColor="#999"
+                        style={styles.input}
+                        onChangeText={handleChange('lastName')}
+                        value={values.lastName}
+                      />
+                    </View>
+                  </View>
 
-            <View style={styles.row}>
-              <Text>Already have an account?</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.link}> Login</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </Formik>
-    </KeyboardAvoidingView>
+                  {auth.error ? <Text style={styles.err}>{auth.error}</Text> : null}
+
+                  <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={auth.loading}>
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      start={{x: 0, y: 0}}
+                      end={{x: 1, y: 0}}
+                      style={styles.buttonGradient}>
+                      {auth.loading ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <View style={styles.buttonContent}>
+                          <Text style={styles.buttonText}>Create Account</Text>
+                          <Feather name="check-circle" size={20} color="#fff" />
+                        </View>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <View style={styles.footer}>
+                    <Text style={styles.footerText}>Already have an account?</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                      <Text style={styles.link}> Sign In</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              )}
+            </Formik>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#f6f8fb', padding: 20, justifyContent: 'center'},
-  title: {fontSize: 28, fontWeight: '700', marginBottom: 12, textAlign: 'center', color: '#0a84ff'},
-  form: {width: '100%'},
-  inputRow: {flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#eee', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 8},
-  input: {flex: 1, padding: 0, color: '#111'},
-  inputSimple: {borderWidth: 1, borderColor: '#eee', padding: 10, borderRadius: 8, backgroundColor: 'white'},
-  rowSmall: {flexDirection: 'row', marginTop: 8},
-  button: {backgroundColor: '#0a84ff', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 8},
-  buttonText: {color: 'white', fontWeight: '700'},
-  row: {flexDirection: 'row', marginTop: 12, justifyContent: 'center'},
-  link: {color: '#0a84ff'},
-  err: {color: '#ff3b30', marginBottom: 6},
+  gradient: {flex: 1},
+  container: {flexGrow: 1, padding: 24, justifyContent: 'center', paddingTop: 60},
+  header: {alignItems: 'center', marginBottom: 40},
+  logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  logo: {fontSize: 42, fontWeight: '900', color: '#fff', letterSpacing: 1, marginBottom: 8},
+  subtitle: {color: 'rgba(255, 255, 255, 0.95)', marginTop: 4, fontSize: 16, fontWeight: '600'},
+  taglineRow: {flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8},
+  tagline: {color: 'rgba(255, 255, 255, 0.9)', fontSize: 14, fontWeight: '500'},
+  card: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 24,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: {width: 0, height: 8},
+  },
+  cardTitle: {fontSize: 24, fontWeight: '800', color: '#1a1a1a', marginBottom: 24, textAlign: 'center'},
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f7fa',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0e6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  input: {flex: 1, fontSize: 16, color: '#1a1a1a', fontWeight: '500'},
+  eyeButton: {padding: 8},
+  nameRow: {flexDirection: 'row', marginBottom: 0},
+  button: {
+    marginTop: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#667eea',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+  },
+  buttonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonContent: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  buttonText: {color: 'white', fontWeight: '800', fontSize: 16, letterSpacing: 0.5},
+  footer: {flexDirection: 'row', marginTop: 20, justifyContent: 'center', alignItems: 'center'},
+  footerText: {color: '#666', fontSize: 14},
+  link: {color: '#667eea', fontWeight: '700', fontSize: 14},
+  err: {color: '#ff3b30', marginBottom: 8, fontSize: 13, marginLeft: 4},
 });

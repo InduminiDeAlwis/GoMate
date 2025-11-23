@@ -8,6 +8,8 @@ import {loadBookings} from '../redux/bookingsSlice';
 export default function RecentBookingsScreen() {
   const dispatch = useDispatch();
   const bookings = useSelector((s) => s.bookings.bookings || []);
+  const theme = useSelector((s) => s.theme.mode);
+  const isDark = theme === 'dark';
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -64,10 +66,10 @@ export default function RecentBookingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDark && styles.containerDark]}>
       {/* Gradient Header */}
       <LinearGradient
-        colors={['#0a7ea4', '#1e90ff', '#4db8ff']}
+        colors={isDark ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#0a7ea4', '#1e90ff', '#4db8ff']}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={styles.gradientHeader}
@@ -118,7 +120,7 @@ export default function RecentBookingsScreen() {
               }}
             >
               <TouchableOpacity
-                style={styles.bookingCard}
+                style={[styles.bookingCard, isDark && styles.bookingCardDark]}
                 onPress={() => openDetails(item)}
                 activeOpacity={0.7}
               >
@@ -130,40 +132,40 @@ export default function RecentBookingsScreen() {
 
                 {/* Booking Info */}
                 <View style={styles.cardContent}>
-                  <View style={styles.iconCircle}>
-                    <Feather name="ticket" size={24} color="#0a7ea4" />
+                  <View style={[styles.iconCircle, isDark && styles.iconCircleDark]}>
+                    <Feather name="ticket" size={24} color={isDark ? '#64b5f6' : '#0a7ea4'} />
                   </View>
                   
                   <View style={styles.bookingInfo}>
-                    <Text style={styles.confirmationCode}>
+                    <Text style={[styles.confirmationCode, isDark && styles.confirmationCodeDark]}>
                       {item.confirmationCode || 'N/A'}
                     </Text>
                     <View style={styles.detailRow}>
-                      <Feather name="map-pin" size={14} color="#666" />
-                      <Text style={styles.itemId}>{item.itemId || 'Unknown'}</Text>
+                      <Feather name="map-pin" size={14} color={isDark ? '#64b5f6' : '#666'} />
+                      <Text style={[styles.itemId, isDark && styles.itemIdDark]}>{item.itemId || 'Unknown'}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Feather name="calendar" size={14} color="#666" />
-                      <Text style={styles.dateText}>{formatDate(item.bookedAt)}</Text>
+                      <Feather name="calendar" size={14} color={isDark ? '#64b5f6' : '#666'} />
+                      <Text style={[styles.dateText, isDark && styles.dateTextDark]}>{formatDate(item.bookedAt)}</Text>
                     </View>
                     {item.user?.seats && (
                       <View style={styles.detailRow}>
-                        <Feather name="users" size={14} color="#666" />
-                        <Text style={styles.seatsText}>{item.user.seats} seat(s)</Text>
+                        <Feather name="users" size={14} color={isDark ? '#64b5f6' : '#666'} />
+                        <Text style={[styles.seatsText, isDark && styles.seatsTextDark]}>{item.user.seats} seat(s)</Text>
                       </View>
                     )}
                   </View>
 
-                  <Feather name="chevron-right" size={24} color="#ccc" />
+                  <Feather name="chevron-right" size={24} color={isDark ? '#444' : '#ccc'} />
                 </View>
               </TouchableOpacity>
             </Animated.View>
           )}
           ListEmptyComponent={() => (
             <View style={styles.emptyState}>
-              <Feather name="inbox" size={64} color="#ddd" />
-              <Text style={styles.emptyTitle}>No Bookings Yet</Text>
-              <Text style={styles.emptyText}>Your travel history will appear here</Text>
+              <Feather name="inbox" size={64} color={isDark ? '#444' : '#ddd'} />
+              <Text style={[styles.emptyTitle, isDark && styles.emptyTitleDark]}>No Bookings Yet</Text>
+              <Text style={[styles.emptyText, isDark && styles.emptyTextDark]}>Your travel history will appear here</Text>
             </View>
           )}
         />
@@ -177,10 +179,10 @@ export default function RecentBookingsScreen() {
         onRequestClose={() => setDetailModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.detailModal}>
+          <View style={[styles.detailModal, isDark && styles.detailModalDark]}>
             {/* Modal Header */}
             <LinearGradient
-              colors={['#0a7ea4', '#1e90ff']}
+              colors={isDark ? ['#1a1a2e', '#16213e'] : ['#0a7ea4', '#1e90ff']}
               start={{x: 0, y: 0}}
               end={{x: 1, y: 0}}
               style={styles.modalHeader}
@@ -195,57 +197,57 @@ export default function RecentBookingsScreen() {
               <View style={styles.modalContent}>
                 {/* Confirmation Code */}
                 <View style={styles.codeSection}>
-                  <Feather name="award" size={32} color="#0a7ea4" />
+                  <Feather name="award" size={32} color={isDark ? '#64b5f6' : '#0a7ea4'} />
                   <View style={{marginLeft: 16, flex: 1}}>
-                    <Text style={styles.codeLabel}>Confirmation Code</Text>
-                    <Text style={styles.codeValue}>{selectedBooking.confirmationCode}</Text>
+                    <Text style={[styles.codeLabel, isDark && styles.codeLabelDark]}>Confirmation Code</Text>
+                    <Text style={[styles.codeValue, isDark && styles.codeValueDark]}>{selectedBooking.confirmationCode}</Text>
                   </View>
                 </View>
 
                 {/* Details */}
                 <View style={styles.detailSection}>
                   <View style={styles.detailItem}>
-                    <Feather name="map-pin" size={20} color="#666" />
+                    <Feather name="map-pin" size={20} color={isDark ? '#64b5f6' : '#666'} />
                     <View style={{marginLeft: 12, flex: 1}}>
-                      <Text style={styles.detailLabel}>Destination</Text>
-                      <Text style={styles.detailValue}>{selectedBooking.itemId}</Text>
+                      <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Destination</Text>
+                      <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>{selectedBooking.itemId}</Text>
                     </View>
                   </View>
 
                   <View style={styles.detailItem}>
-                    <Feather name="calendar" size={20} color="#666" />
+                    <Feather name="calendar" size={20} color={isDark ? '#64b5f6' : '#666'} />
                     <View style={{marginLeft: 12, flex: 1}}>
-                      <Text style={styles.detailLabel}>Booked On</Text>
-                      <Text style={styles.detailValue}>{formatDate(selectedBooking.bookedAt)}</Text>
+                      <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Booked On</Text>
+                      <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>{formatDate(selectedBooking.bookedAt)}</Text>
                     </View>
                   </View>
 
                   {selectedBooking.user?.passengerName && (
                     <View style={styles.detailItem}>
-                      <Feather name="user" size={20} color="#666" />
+                      <Feather name="user" size={20} color={isDark ? '#64b5f6' : '#666'} />
                       <View style={{marginLeft: 12, flex: 1}}>
-                        <Text style={styles.detailLabel}>Passenger</Text>
-                        <Text style={styles.detailValue}>{selectedBooking.user.passengerName}</Text>
+                        <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Passenger</Text>
+                        <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>{selectedBooking.user.passengerName}</Text>
                       </View>
                     </View>
                   )}
 
                   {selectedBooking.user?.seats && (
                     <View style={styles.detailItem}>
-                      <Feather name="users" size={20} color="#666" />
+                      <Feather name="users" size={20} color={isDark ? '#64b5f6' : '#666'} />
                       <View style={{marginLeft: 12, flex: 1}}>
-                        <Text style={styles.detailLabel}>Seats</Text>
-                        <Text style={styles.detailValue}>{selectedBooking.user.seats}</Text>
+                        <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Seats</Text>
+                        <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>{selectedBooking.user.seats}</Text>
                       </View>
                     </View>
                   )}
 
                   {selectedBooking.user?.schedule?.time && (
                     <View style={styles.detailItem}>
-                      <Feather name="clock" size={20} color="#666" />
+                      <Feather name="clock" size={20} color={isDark ? '#64b5f6' : '#666'} />
                       <View style={{marginLeft: 12, flex: 1}}>
-                        <Text style={styles.detailLabel}>Departure Time</Text>
-                        <Text style={styles.detailValue}>{selectedBooking.user.schedule.time}</Text>
+                        <Text style={[styles.detailLabel, isDark && styles.detailLabelDark]}>Departure Time</Text>
+                        <Text style={[styles.detailValue, isDark && styles.detailValueDark]}>{selectedBooking.user.schedule.time}</Text>
                       </View>
                     </View>
                   )}
@@ -331,4 +333,19 @@ const styles = StyleSheet.create({
   detailValue: {fontSize: 16, fontWeight: '700', color: '#1a1a1a'},
   closeButton: {backgroundColor: '#0a7ea4', paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 3, shadowColor: '#0a7ea4', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: {width: 0, height: 4}},
   closeButtonText: {fontSize: 16, fontWeight: '700', color: '#fff'},
+  // Dark mode styles
+  containerDark: {backgroundColor: '#0f0f1e'},
+  bookingCardDark: {backgroundColor: '#1a1a2e', borderColor: '#2a2a3e'},
+  iconCircleDark: {backgroundColor: '#16213e'},
+  confirmationCodeDark: {color: '#e0e0e0'},
+  itemIdDark: {color: '#b0b0b0'},
+  dateTextDark: {color: '#b0b0b0'},
+  seatsTextDark: {color: '#b0b0b0'},
+  emptyTitleDark: {color: '#666'},
+  emptyTextDark: {color: '#555'},
+  detailModalDark: {backgroundColor: '#1a1a2e'},
+  codeLabelDark: {color: '#888'},
+  codeValueDark: {color: '#64b5f6'},
+  detailLabelDark: {color: '#888'},
+  detailValueDark: {color: '#e0e0e0'},
 });

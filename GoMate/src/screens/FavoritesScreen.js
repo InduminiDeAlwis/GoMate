@@ -7,6 +7,8 @@ import {Feather} from '@expo/vector-icons';
 
 export default function FavoritesScreen({navigation}) {
   const favorites = useSelector((s) => s.items.favorites);
+  const theme = useSelector((s) => s.theme.mode);
+  const isDark = theme === 'dark';
   const [pulseAnim] = useState(new Animated.Value(1));
   const [scrollY] = useState(new Animated.Value(0));
   const [headerIconScale] = useState(new Animated.Value(1));
@@ -74,10 +76,10 @@ export default function FavoritesScreen({navigation}) {
   }, [navigation, favorites.length, pulseAnim]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDark && styles.containerDark]}>
       <Animated.View>
         <LinearGradient
-          colors={['#ff6b6b', '#ff8e53', '#ffa94d']}
+          colors={isDark ? ['#1a1a2e', '#16213e', '#533483'] : ['#ff6b6b', '#ff8e53', '#ffa94d']}
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
           style={styles.gradientHeader}
@@ -109,10 +111,10 @@ export default function FavoritesScreen({navigation}) {
           favorites.length > 0 ? (
             <View style={styles.sectionHeader}>
               <View style={styles.titleWithIcon}>
-                <Feather name="heart" size={20} color="#ff6b6b" style={{marginRight: 8}} />
-                <Text style={styles.sectionTitle}>Saved Routes</Text>
+                <Feather name="heart" size={20} color={isDark ? '#ff6b9d' : '#ff6b6b'} style={{marginRight: 8}} />
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Saved Routes</Text>
               </View>
-              <View style={styles.countBadge}>
+              <View style={[styles.countBadge, isDark && styles.countBadgeDark]}>
                 <Text style={styles.sectionCount}>{favorites.length}</Text>
               </View>
             </View>
@@ -246,5 +248,15 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  // Dark mode styles
+  containerDark: {
+    backgroundColor: '#0f0f1e',
+  },
+  sectionTitleDark: {
+    color: '#e0e0e0',
+  },
+  countBadgeDark: {
+    backgroundColor: '#ff6b9d',
   },
 });

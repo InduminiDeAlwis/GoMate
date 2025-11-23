@@ -10,6 +10,8 @@ export default function HomeScreen({navigation}) {
   const dispatch = useDispatch();
   const {items, loading, error} = useSelector((s) => s.items);
   const authUser = useSelector((s) => s.auth.user) || {};
+  const theme = useSelector((s) => s.theme.mode);
+  const isDark = theme === 'dark';
   const username = authUser?.username || '';
   const displayName = authUser?.firstName ? `${authUser.firstName}${authUser.lastName ? ' ' + authUser.lastName : ''}` : username;
   const [query, setQuery] = useState('');
@@ -29,7 +31,7 @@ export default function HomeScreen({navigation}) {
     navigation.setOptions({
       title: '',
       headerStyle: {
-        backgroundColor: '#0a7ea4',
+        backgroundColor: isDark ? '#1a1a2e' : '#0a7ea4',
       },
       headerTintColor: '#fff',
       headerTitleStyle: {
@@ -122,10 +124,10 @@ export default function HomeScreen({navigation}) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDark && styles.containerDark]}>
       <Animated.View style={{opacity: headerOpacity}}>
         <LinearGradient
-          colors={['#0a7ea4', '#1e90ff', '#4db8ff']}
+          colors={isDark ? ['#1a1a2e', '#16213e', '#0f3460'] : ['#0a7ea4', '#1e90ff', '#4db8ff']}
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
           style={styles.gradientHeader}
@@ -148,13 +150,13 @@ export default function HomeScreen({navigation}) {
               </View>
             ) : null}
             
-            <View style={[styles.searchRow, searchFocused && styles.searchRowFocused]}>
+            <View style={[styles.searchRow, searchFocused && styles.searchRowFocused, isDark && styles.searchRowDark]}>
               <View style={styles.searchIcon}>
-                <Feather name="search" size={20} color="#0a7ea4" />
+                <Feather name="search" size={20} color={isDark ? '#64b5f6' : '#0a7ea4'} />
               </View>
               <TextInput 
                 placeholder="Search stops, stations, routes..." 
-                placeholderTextColor="#999"
+                placeholderTextColor={isDark ? '#888' : '#999'}
                 value={query} 
                 onChangeText={setQuery}
                 onFocus={() => {
@@ -200,10 +202,10 @@ export default function HomeScreen({navigation}) {
           filtered.length > 0 ? (
             <View style={styles.sectionHeader}>
               <View style={styles.titleWithIcon}>
-                <Feather name="navigation" size={20} color="#0a7ea4" style={{marginRight: 8}} />
-                <Text style={styles.sectionTitle}>Available Transport</Text>
+                <Feather name="navigation" size={20} color={isDark ? '#64b5f6' : '#0a7ea4'} style={{marginRight: 8}} />
+                <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Available Transport</Text>
               </View>
-              <View style={styles.countBadge}>
+              <View style={[styles.countBadge, isDark && styles.countBadgeDark]}>
                 <Text style={styles.sectionCount}>{filtered.length}</Text>
               </View>
             </View>
@@ -383,5 +385,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#999',
     textAlign: 'center',
+  },
+  // Dark mode styles
+  containerDark: {
+    backgroundColor: '#0f0f1e',
+  },
+  searchRowDark: {
+    backgroundColor: '#1a1a2e',
+    borderColor: '#2a2a3e',
+  },
+  sectionTitleDark: {
+    color: '#e0e0e0',
+  },
+  countBadgeDark: {
+    backgroundColor: '#64b5f6',
   },
 });
