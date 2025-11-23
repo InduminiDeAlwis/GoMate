@@ -1,4 +1,6 @@
-# Welcome to your Expo app 👋
+# GoMate — View public transport schedules or explore destinations
+
+GoMate is an Expo React Native app that lets users view public transport stops, timetables, and explore nearby destinations using the TransportAPI.
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 

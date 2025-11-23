@@ -18,7 +18,8 @@ export default function LoginScreen({navigation}) {
 
   useEffect(() => {
     if (auth.isLoggedIn) {
-      // Navigation handled by root navigator, no explicit navigate needed
+      // On successful login, reset navigation stack to the main tabs so user cannot go back to Login
+      navigation.reset({index: 0, routes: [{name: 'Main'}]});
     }
   }, [auth.isLoggedIn]);
 
