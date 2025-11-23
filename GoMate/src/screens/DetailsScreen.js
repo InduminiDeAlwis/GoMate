@@ -1,5 +1,6 @@
 import React, {useEffect, useState, useCallback} from 'react';
-import {View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Alert, Platform, Modal, TextInput, RefreshControl} from 'react-native';
+import {View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity, Linking, Alert, Platform, Modal, TextInput, RefreshControl, Animated} from 'react-native';
+import {LinearGradient} from 'expo-linear-gradient';
 import MapView, {Marker} from 'react-native-maps';
 import {useDispatch, useSelector} from 'react-redux';
 import {fetchDetails, refreshSchedule} from '../redux/detailsSlice';
@@ -27,6 +28,14 @@ export default function DetailsScreen({route}) {
   const [lastBooking, setLastBooking] = useState(null);
   const [selectedScheduleForMap, setSelectedScheduleForMap] = useState(null);
   const [mapRegion, setMapRegion] = useState(null);
+  const [scaleAnim] = useState(new Animated.Value(1));
+  const [pulseAnim] = useState(new Animated.Value(1));
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [successData, setSuccessData] = useState(null);
+  const [successScale] = useState(new Animated.Value(0));
+  const [successOpacity] = useState(new Animated.Value(0));
+  const [checkmarkScale] = useState(new Animated.Value(0));
 
   // Refresh schedule data on demand
   const handleRefreshSchedule = useCallback(async () => {
@@ -44,6 +53,78 @@ export default function DetailsScreen({route}) {
       setScheduleLoading(false);
     }
   }, [item, id, dispatch]);
+
+  // Animate modal appearance
+  useEffect(() => {
+    if (bookingModalVisible) {
+      Animated.parallel([
+        Animated.spring(fadeAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 7
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 7
+        })
+      ]).start();
+      
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 1000,
+            useNativeDriver: true
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true
+          })
+        ])
+      ).start();
+    } else {
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.9);
+      pulseAnim.setValue(1);
+    }
+  }, [bookingModalVisible]);
+
+  // Animate success modal
+  useEffect(() => {
+    if (successModalVisible) {
+      Animated.parallel([
+        Animated.spring(successScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 7
+        }),
+        Animated.timing(successOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true
+        })
+      ]).start();
+      
+      // Checkmark pop animation
+      setTimeout(() => {
+        Animated.spring(checkmarkScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 100,
+          friction: 5
+        }).start();
+      }, 200);
+    } else {
+      successScale.setValue(0);
+      successOpacity.setValue(0);
+      checkmarkScale.setValue(0);
+    }
+  }, [successModalVisible]);
 
   // Pull to refresh entire details
   const onRefresh = useCallback(async () => {
@@ -124,32 +205,54 @@ export default function DetailsScreen({route}) {
       <ScrollView 
         contentContainerStyle={styles.container}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0a7ea4" />
         }
       >
-      <Image source={{uri: item.thumbnail || item.images?.[0]}} style={styles.image} />
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{item.title}</Text>
-        <View style={[styles.badge, {backgroundColor: item.status === 'Active' ? '#34C759' : item.status === 'Popular' ? '#ff9500' : '#0a84ff'}]}>
-          <Text style={styles.badgeText}>{item.status}</Text>
+      {/* Hero Image with Gradient Overlay */}
+      <View style={styles.heroContainer}>
+        <Image source={{uri: item.thumbnail || item.images?.[0]}} style={styles.image} />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.7)']}
+          style={styles.imageGradient}
+        />
+        <View style={styles.heroContent}>
+          <View style={[styles.badge, {backgroundColor: item.status === 'Active' ? '#34C759' : item.status === 'Popular' ? '#ff9500' : '#0a84ff'}]}>
+            <Text style={styles.badgeText}>{item.status}</Text>
+          </View>
+          <Text style={styles.title}>{item.title}</Text>
         </View>
       </View>
 
-      <Text style={styles.desc}>{item.description}</Text>
+      <View style={styles.contentSection}>
+      <View style={styles.descriptionCard}>
+        <View style={styles.cardHeader}>
+          <Feather name="info" size={20} color="#0a7ea4" style={{marginRight: 8}} />
+          <Text style={styles.cardTitle}>About this location</Text>
+        </View>
+        <Text style={styles.desc}>{item.description}</Text>
+      </View>
 
       {/* Show technical identifiers and source info from raw API object if available */}
       {item.raw ? (
-        <View style={{marginTop: 12}}>
-          <Text style={{fontWeight: '700', marginBottom: 6}}>Details</Text>
-          {item.raw.atcocode ? <Text style={styles.meta}>ATCO code: {item.raw.atcocode}</Text> : null}
-          {item.raw.station_code ? <Text style={styles.meta}>Station code: {item.raw.station_code}</Text> : null}
-          {item.raw.tiploc_code ? <Text style={styles.meta}>Tiploc: {item.raw.tiploc_code}</Text> : null}
-          {item.raw.osm_id ? <Text style={styles.meta}>OSM: {item.raw.osm_id}</Text> : null}
+        <View style={styles.detailsCard}>
+          <View style={styles.cardHeader}>
+            <Feather name="code" size={18} color="#666" style={{marginRight: 8}} />
+            <Text style={styles.cardTitle}>Technical Details</Text>
+          </View>
+          {item.raw.atcocode ? <Text style={styles.meta}>🎫 ATCO code: {item.raw.atcocode}</Text> : null}
+          {item.raw.station_code ? <Text style={styles.meta}>🚉 Station code: {item.raw.station_code}</Text> : null}
+          {item.raw.tiploc_code ? <Text style={styles.meta}>📍 Tiploc: {item.raw.tiploc_code}</Text> : null}
+          {item.raw.osm_id ? <Text style={styles.meta}>🗺️ OSM: {item.raw.osm_id}</Text> : null}
           {item.raw.description && item.raw.description !== item.description ? <Text style={styles.meta}>{item.raw.description}</Text> : null}
         </View>
       ) : null}
 
-      {item.type ? <Text style={styles.meta}>Type: {item.type}</Text> : null}
+      {item.type ? (
+        <View style={styles.typeChip}>
+          <Feather name="tag" size={14} color="#0a7ea4" style={{marginRight: 6}} />
+          <Text style={styles.typeText}>{item.type}</Text>
+        </View>
+      ) : null}
 
       {loading ? (
         <View style={{marginTop: 12}}>
@@ -160,11 +263,15 @@ export default function DetailsScreen({route}) {
       {error ? (
         <Text style={{color: '#ff3b30', marginTop: 12}}>{error}</Text>
       ) : null}
+      </View>
 
       {item.schedule || scheduleLoading ? (
-        <View style={{width: '100%', marginTop: 16}}>
+        <View style={styles.scheduleCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Schedule</Text>
+            <View style={styles.titleWithIcon}>
+              <Feather name="clock" size={20} color="#0a7ea4" style={{marginRight: 8}} />
+              <Text style={styles.sectionTitle}>Schedule</Text>
+            </View>
             <TouchableOpacity 
               onPress={handleRefreshSchedule} 
               disabled={scheduleLoading}
@@ -226,9 +333,12 @@ export default function DetailsScreen({route}) {
 
       {/* Enhanced Map Section with Route and Destinations */}
       {(item.latitude && item.longitude) || (item.stops && item.stops.length > 0) ? (
-        <View style={{width: '100%', marginTop: 16}}>
+        <View style={styles.mapCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Route & Location</Text>
+            <View style={styles.titleWithIcon}>
+              <Feather name="map" size={20} color="#0a7ea4" style={{marginRight: 8}} />
+              <Text style={styles.sectionTitle}>Route & Location</Text>
+            </View>
             {selectedScheduleForMap ? (
               <TouchableOpacity onPress={() => setSelectedScheduleForMap(null)} style={styles.clearMapBtn}>
                 <Text style={styles.clearMapText}>Show All</Text>
@@ -321,11 +431,11 @@ export default function DetailsScreen({route}) {
               </View>
             ) : null}
           </View>
-
+          
           {/* Actions: Book / Directions */}
-          <View style={{flexDirection: 'row', marginTop: 16, width: '100%', justifyContent: 'space-between'}}>
+          <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
-              style={[styles.actionButton, {backgroundColor: '#0a84ff'}]}
+              style={[styles.actionButton, styles.bookButton]}
               onPress={() => {
                 if (!user) {
                   Alert.alert('Login required', 'Please log in to book');
@@ -343,7 +453,7 @@ export default function DetailsScreen({route}) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton, {backgroundColor: '#34C759'}]}
+              style={[styles.actionButton, styles.directionsButton]}
               onPress={() => {
                 // Open directions to first stop or fallback to item's coordinates
                 let lat = null;
@@ -374,47 +484,111 @@ export default function DetailsScreen({route}) {
         </View>
       ) : null}
     </ScrollView>
-    {/* Booking modal */}
-    <Modal visible={bookingModalVisible} transparent animationType="slide" onRequestClose={() => setBookingModalVisible(false)}>
+    {/* Enhanced Booking Modal */}
+    <Modal visible={bookingModalVisible} transparent animationType="fade" onRequestClose={() => setBookingModalVisible(false)}>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Book: {item.title}</Text>
+        <Animated.View style={[styles.modalContent, {
+          opacity: fadeAnim,
+          transform: [{scale: scaleAnim}]
+        }]}>
+          {/* Modal Header */}
+          <LinearGradient
+            colors={['#0a7ea4', '#1e90ff']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 0}}
+            style={styles.modalHeader}
+          >
+            <View style={{flex: 1}}>
+              <Text style={styles.modalTitle}>Book Your Journey</Text>
+              <Text style={styles.modalSubtitle}>{item.title}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setBookingModalVisible(false)} style={styles.modalCloseBtn}>
+              <Feather name="x" size={24} color="#fff" />
+            </TouchableOpacity>
+          </LinearGradient>
 
-          {item.schedule && item.schedule.length > 0 ? (
-            <View style={{marginBottom: 8}}>
-              <Text style={{fontWeight: '700', marginBottom: 6}}>Choose schedule</Text>
-              <View style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-                {item.schedule.map((s, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => setSelectedScheduleIndex(idx)}
-                    style={[styles.scheduleChip, selectedScheduleIndex === idx ? styles.scheduleChipActive : null]}
-                  >
-                    <Text style={selectedScheduleIndex === idx ? {color: 'white', fontWeight: '700'} : {}}>{s.time}</Text>
-                  </TouchableOpacity>
-                ))}
+          {/* Modal Body */}
+          <ScrollView style={styles.modalBody}>
+            {/* Schedule Selection */}
+            {item.schedule && item.schedule.length > 0 ? (
+              <View style={styles.compactSection}>
+                <Text style={styles.compactLabel}>⏰ Departure Time</Text>
+                <View style={styles.scheduleChipsContainer}>
+                  {item.schedule.map((s, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => setSelectedScheduleIndex(idx)}
+                      style={[styles.scheduleChipCompact, selectedScheduleIndex === idx ? styles.scheduleChipActive : null]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={selectedScheduleIndex === idx ? styles.scheduleChipTextActive : styles.scheduleChipText}>
+                        {s.time}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* Passenger Name */}
+            <View style={styles.compactSection}>
+              <Text style={styles.compactLabel}>👤 Passenger Name</Text>
+              <TextInput 
+                value={passengerName} 
+                onChangeText={setPassengerName} 
+                placeholder="Enter your full name" 
+                placeholderTextColor="#999"
+                style={styles.compactInput} 
+              />
+            </View>
+
+            {/* Seats Selection */}
+            <View style={styles.compactSection}>
+              <Text style={styles.compactLabel}>👥 Number of Seats</Text>
+              <View style={styles.seatsCompact}>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setSeats(Math.max(1, seats - 1));
+                    Animated.sequence([
+                      Animated.timing(scaleAnim, {toValue: 0.95, duration: 100, useNativeDriver: true}),
+                      Animated.timing(scaleAnim, {toValue: 1, duration: 100, useNativeDriver: true})
+                    ]).start();
+                  }} 
+                  style={styles.seatBtnCompact}
+                  disabled={seats <= 1}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="minus" size={18} color={seats <= 1 ? '#ccc' : '#0a7ea4'} />
+                </TouchableOpacity>
+                <Animated.Text style={[styles.seatsNumberCompact, {transform: [{scale: scaleAnim}]}]}>{seats}</Animated.Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setSeats(seats + 1);
+                    Animated.sequence([
+                      Animated.timing(scaleAnim, {toValue: 0.95, duration: 100, useNativeDriver: true}),
+                      Animated.timing(scaleAnim, {toValue: 1, duration: 100, useNativeDriver: true})
+                    ]).start();
+                  }} 
+                  style={styles.seatBtnCompact}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="plus" size={18} color="#0a7ea4" />
+                </TouchableOpacity>
               </View>
             </View>
-          ) : null}
+          </ScrollView>
 
-          <Text style={{fontWeight: '700', marginBottom: 6}}>Passenger name</Text>
-          <TextInput value={passengerName} onChangeText={setPassengerName} placeholder="Name" style={styles.input} />
-
-          <Text style={{fontWeight: '700', marginTop: 8}}>Seats</Text>
-          <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 6}}>
-            <TouchableOpacity onPress={() => setSeats(Math.max(1, seats - 1))} style={styles.seatBtn}><Text>-</Text></TouchableOpacity>
-            <Text style={{marginHorizontal: 12, fontWeight: '700'}}>{seats}</Text>
-            <TouchableOpacity onPress={() => setSeats(seats + 1)} style={styles.seatBtn}><Text>+</Text></TouchableOpacity>
-          </View>
-
-          <View style={{flexDirection: 'row', marginTop: 16}}>
-            <TouchableOpacity style={[styles.modalButton, {backgroundColor: '#eee'}]} onPress={() => setBookingModalVisible(false)}>
-              <Text style={{fontWeight: '700'}}>Cancel</Text>
-            </TouchableOpacity>
-
+          {/* Confirm Button */}
+          <View style={styles.modalFooter}>
+            <Animated.View style={{transform: [{scale: pulseAnim}], width: '100%'}}>
             <TouchableOpacity
-              style={[styles.modalButton, styles.modalButtonPrimary]}
+              style={styles.confirmButton}
+              activeOpacity={0.8}
               onPress={async () => {
+                if (!passengerName.trim()) {
+                  Alert.alert('⚠️ Required', 'Please enter passenger name');
+                  return;
+                }
                 try {
                   setBookingLoading(true);
                   const schedule = item.schedule && item.schedule[selectedScheduleIndex] ? item.schedule[selectedScheduleIndex] : null;
@@ -424,21 +598,85 @@ export default function DetailsScreen({route}) {
                   setBookingLoading(false);
                   setBookingModalVisible(false);
                   setLastBooking(booking);
-                  if (booking && booking.confirmationCode) {
-                    Alert.alert('Booking confirmed', `Code: ${booking.confirmationCode}`);
-                  } else {
-                    Alert.alert('Booked', `You booked ${item.title}`);
-                  }
+                  
+                  // Show custom success modal
+                  setSuccessData({
+                    confirmationCode: booking?.confirmationCode,
+                    destination: item.title,
+                    time: schedule?.time,
+                    passenger: passengerName,
+                    seats: seats
+                  });
+                  setSuccessModalVisible(true);
                 } catch (e) {
                   setBookingLoading(false);
-                  Alert.alert('Booking failed', e.message || 'Unable to complete booking');
+                  Alert.alert('❌ Booking Failed', e.message || 'Unable to complete booking. Please try again.');
                 }
               }}
+              disabled={bookingLoading || !passengerName.trim()}
             >
-              {bookingLoading ? <ActivityIndicator color="white" /> : <Text style={{color: 'white', fontWeight: '700'}}>Confirm</Text>}
+              {bookingLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Feather name="check-circle" size={20} color="white" style={{marginRight: 8}} />
+                  <Text style={styles.confirmButtonText}>Confirm Booking</Text>
+                </>
+              )}
             </TouchableOpacity>
+            </Animated.View>
           </View>
-        </View>
+        </Animated.View>
+      </View>
+    </Modal>
+
+    {/* Custom Success Modal */}
+    <Modal visible={successModalVisible} transparent animationType="none" onRequestClose={() => setSuccessModalVisible(false)}>
+      <View style={styles.successOverlay}>
+        <Animated.View style={[styles.successModal, {
+          opacity: successOpacity,
+          transform: [{scale: successScale}]
+        }]}>          
+          {/* Success Icon */}
+          <Animated.View style={[styles.successIconContainer, {
+            transform: [{scale: checkmarkScale}]
+          }]}>            
+            <LinearGradient
+              colors={['#4CAF50', '#45a049']}
+              style={styles.successIconGradient}
+            >              
+              <Feather name="check" size={48} color="#fff" />
+            </LinearGradient>
+          </Animated.View>
+          
+          {/* Success Title */}
+          <Text style={styles.successTitle}>Booking Successful!</Text>
+          <Text style={styles.successSubtitle}>Your journey is confirmed</Text>
+          
+          {/* Confirmation Details */}
+          {successData && (
+            <View style={styles.successDetails}>
+              {successData.confirmationCode && (
+                <View style={styles.confirmationCodeBox}>
+                  <Feather name="award" size={20} color="#4CAF50" />
+                  <View style={{marginLeft: 12}}>
+                    <Text style={styles.confirmationLabel}>Confirmation Code</Text>
+                    <Text style={styles.confirmationCode}>{successData.confirmationCode}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Close Button */}
+          <TouchableOpacity
+            style={styles.successButton}
+            onPress={() => setSuccessModalVisible(false)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.successButtonText}>Great!</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
     </Modal>
     </>
@@ -449,43 +687,84 @@ export default function DetailsScreen({route}) {
 
 
 const styles = StyleSheet.create({
-  container: {padding: 16, backgroundColor: '#f8f9fa', alignItems: 'flex-start'},
-  image: {width: '100%', height: 240, borderRadius: 12, marginBottom: 16, backgroundColor: '#e0e0e0'},
-  headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%'},
-  title: {fontSize: 24, fontWeight: '800', marginBottom: 8, flex: 1, color: '#1a1a1a'},
-  badge: {paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14},
+  container: {paddingBottom: 24, backgroundColor: '#f5f7fa', alignItems: 'flex-start'},
+  heroContainer: {width: '100%', height: 300, position: 'relative'},
+  image: {width: '100%', height: 300, backgroundColor: '#e0e0e0'},
+  imageGradient: {position: 'absolute', bottom: 0, left: 0, right: 0, height: 150},
+  heroContent: {position: 'absolute', bottom: 20, left: 16, right: 16},
+  title: {fontSize: 28, fontWeight: '900', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 4},
+  badge: {paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, alignSelf: 'flex-start', marginBottom: 12},
   badgeText: {color: 'white', fontWeight: '700', fontSize: 11, textTransform: 'uppercase'},
-  desc: {fontSize: 16, color: '#555', marginTop: 8, lineHeight: 24},
-  meta: {fontSize: 14, color: '#666', marginTop: 8},
-  center: {flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa'},
+  contentSection: {width: '100%', paddingHorizontal: 16, paddingTop: 16},
+  descriptionCard: {backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: {width: 0, height: 2}},
+  detailsCard: {backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: {width: 0, height: 2}},
+  cardHeader: {flexDirection: 'row', alignItems: 'center', marginBottom: 12},
+  cardTitle: {fontSize: 16, fontWeight: '700', color: '#1a1a1a'},
+  desc: {fontSize: 15, color: '#555', lineHeight: 22},
+  meta: {fontSize: 14, color: '#666', marginTop: 6, lineHeight: 20},
+  typeChip: {flexDirection: 'row', alignItems: 'center', backgroundColor: '#e6f7ff', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start'},
+  typeText: {fontSize: 14, color: '#0a7ea4', fontWeight: '600'},
+  center: {flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f7fa'},
+  scheduleCard: {width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginHorizontal: 16, marginTop: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: {width: 0, height: 2}},
+  mapCard: {width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16, marginHorizontal: 16, marginTop: 16, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: {width: 0, height: 2}},
   sectionHeader: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12},
+  titleWithIcon: {flexDirection: 'row', alignItems: 'center'},
   sectionTitle: {fontSize: 18, fontWeight: '700', color: '#1a1a1a'},
   refreshBtn: {padding: 8, borderRadius: 20, backgroundColor: '#f0f0f0'},
-  scheduleRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e8e8e8', backgroundColor: '#fff', paddingHorizontal: 12, borderRadius: 8, marginBottom: 6},
-  scheduleRowSelected: {backgroundColor: '#e3f2fd', borderColor: '#0a84ff', borderWidth: 2},
+  scheduleRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', backgroundColor: '#fafafa', paddingHorizontal: 14, borderRadius: 10, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: {width: 0, height: 1}},
+  scheduleRowSelected: {backgroundColor: '#e3f2fd', borderColor: '#0a84ff', borderWidth: 2, elevation: 3},
   scheduleTimeBox: {backgroundColor: '#0a7ea4', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginRight: 12},
   scheduleTime: {fontWeight: '700', fontSize: 15, color: '#fff'},
+  platformText: {fontSize: 11, color: '#e6f7ff', fontWeight: '600', marginTop: 2},
   scheduleDest: {fontSize: 15, fontWeight: '600', color: '#1a1a1a'},
   scheduleOperator: {fontSize: 12, color: '#999', marginTop: 2},
+  scheduleStatus: {fontSize: 12, color: '#ff3b30', marginTop: 2, fontWeight: '600'},
   delayBadge: {backgroundColor: '#ff3b30', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8},
   delayText: {color: 'white', fontSize: 10, fontWeight: '700'},
   noData: {color: '#999', fontSize: 14, fontStyle: 'italic', paddingVertical: 12},
   stopItem: {paddingVertical: 4, color: '#444'},
-  actionButton: {flex: 1, padding: 14, borderRadius: 10, backgroundColor: '#eee', alignItems: 'center', marginRight: 8, flexDirection: 'row', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4},
+  actionButtonsContainer: {flexDirection: 'row', marginTop: 16, width: '100%', justifyContent: 'space-between', gap: 12},
+  actionButton: {flex: 1, padding: 16, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: {width: 0, height: 2}},
+  bookButton: {backgroundColor: '#0a84ff'},
+  directionsButton: {backgroundColor: '#34C759'},
   actionText: {fontWeight: '700', fontSize: 15},
-  modalOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center'},
-  modalContent: {width: '90%', backgroundColor: 'white', padding: 16, borderRadius: 12},
-  modalTitle: {fontSize: 18, fontWeight: '800', marginBottom: 8},
-  input: {borderWidth: 1, borderColor: '#eee', padding: 10, borderRadius: 8, backgroundColor: '#fff'},
-  seatBtn: {width: 36, height: 36, borderRadius: 18, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center'},
-  scheduleChip: {paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f2f2f2', marginRight: 8, marginBottom: 8},
-  scheduleChipActive: {backgroundColor: '#0a84ff'},
-  modalButton: {flex: 1, padding: 12, borderRadius: 8, alignItems: 'center', marginRight: 8},
-  modalButtonPrimary: {backgroundColor: '#0a84ff'},
-  mapLegend: {flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8, backgroundColor: '#f8f9fa', borderRadius: 8, marginTop: 8},
+  modalOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20},
+  modalContent: {width: '100%', maxWidth: 450, backgroundColor: 'white', borderRadius: 20, elevation: 8, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: {width: 0, height: 4}, overflow: 'hidden'},
+  modalHeader: {flexDirection: 'row', alignItems: 'center', padding: 20, gap: 12},
+  modalTitle: {fontSize: 20, fontWeight: '800', color: '#fff'},
+  modalSubtitle: {fontSize: 14, color: '#e6f7ff', marginTop: 2},
+  modalCloseBtn: {padding: 4},
+  modalBody: {padding: 20, maxHeight: 400},
+  compactSection: {marginBottom: 20},
+  compactLabel: {fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 10},
+  compactInput: {backgroundColor: '#f8f9fa', borderRadius: 10, padding: 14, fontSize: 15, color: '#1a1a1a', fontWeight: '500', borderWidth: 1, borderColor: '#e0e0e0'},
+  scheduleChipsContainer: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
+  scheduleChipCompact: {paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#f5f5f5', borderWidth: 2, borderColor: '#e0e0e0'},
+  scheduleChipActive: {backgroundColor: '#0a7ea4', borderColor: '#0a7ea4'},
+  scheduleChipText: {fontSize: 14, fontWeight: '600', color: '#333'},
+  scheduleChipTextActive: {fontSize: 14, fontWeight: '700', color: '#fff'},
+  seatsCompact: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8f9fa', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e0e0e0'},
+  seatBtnCompact: {width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#e0e0e0', elevation: 3, shadowColor: '#0a7ea4', shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: {width: 0, height: 2}},
+  seatsNumberCompact: {fontSize: 24, fontWeight: '800', color: '#0a7ea4'},
+  modalFooter: {padding: 20, borderTopWidth: 1, borderTopColor: '#f0f0f0'},
+  confirmButton: {flexDirection: 'row', backgroundColor: '#0a7ea4', paddingVertical: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#0a7ea4', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: {width: 0, height: 6}},
+  confirmButtonText: {fontSize: 16, fontWeight: '700', color: '#fff'},
+  mapLegend: {flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12, backgroundColor: '#f8f9fa', borderRadius: 12, marginTop: 12, borderWidth: 1, borderColor: '#e8e8e8'},
   legendItem: {flexDirection: 'row', alignItems: 'center'},
-  legendDot: {width: 10, height: 10, borderRadius: 5, marginRight: 6},
-  legendText: {fontSize: 12, color: '#666'},
+  legendDot: {width: 12, height: 12, borderRadius: 6, marginRight: 6},
+  legendText: {fontSize: 12, color: '#666', fontWeight: '600'},
   clearMapBtn: {backgroundColor: '#0a84ff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16},
   clearMapText: {color: 'white', fontSize: 12, fontWeight: '600'},
+  successOverlay: {flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20},
+  successModal: {width: '100%', maxWidth: 400, backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 20, shadowOffset: {width: 0, height: 10}},
+  successIconContainer: {marginBottom: 24},
+  successIconGradient: {width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#4CAF50', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: {width: 0, height: 4}},
+  successTitle: {fontSize: 26, fontWeight: '800', color: '#1a1a1a', marginBottom: 8, textAlign: 'center'},
+  successSubtitle: {fontSize: 16, color: '#666', marginBottom: 24, textAlign: 'center'},
+  successDetails: {width: '100%', marginBottom: 24},
+  confirmationCodeBox: {flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f8f4', padding: 16, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#4CAF50'},
+  confirmationLabel: {fontSize: 12, color: '#666', marginBottom: 4, textTransform: 'uppercase', fontWeight: '600'},
+  confirmationCode: {fontSize: 20, fontWeight: '800', color: '#4CAF50', letterSpacing: 1},
+  successButton: {width: '100%', backgroundColor: '#4CAF50', paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 3, shadowColor: '#4CAF50', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: {width: 0, height: 4}},
+  successButtonText: {fontSize: 18, fontWeight: '700', color: '#fff'},
 });
