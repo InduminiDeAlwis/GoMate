@@ -2,19 +2,15 @@ import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {fetchTransportItems as fetchFromApi} from '../api/transportApi';
 
-const DUMMY_FALLBACK = [
-  {id: 1, title: 'Compact Car', description: 'A compact vehicle for city travel', thumbnail: 'https://picsum.photos/200/200?random=1'},
-  {id: 2, title: 'Motorbike', description: 'Two-wheeler for quick trips', thumbnail: 'https://picsum.photos/200/200?random=2'},
-  {id: 3, title: 'SUV', description: 'Spacious SUV for family travel', thumbnail: 'https://picsum.photos/200/200?random=3'},
-];
-
 export const fetchItems = createAsyncThunk('items/fetchItems', async () => {
   try {
     const res = await fetchFromApi();
-    if (!res || !res.products) return DUMMY_FALLBACK;
+    // If API returns a products array use it. If not, return an empty array (no mock fallback).
+    if (!res || !Array.isArray(res.products)) return [];
     return res.products;
   } catch (e) {
-    return DUMMY_FALLBACK;
+    // On error return empty array so UI shows no items instead of mocked data.
+    return [];
   }
 });
 
@@ -63,7 +59,7 @@ const itemsSlice = createSlice({
       })
       .addCase(fetchItems.rejected, (s) => {
         s.loading = false;
-        s.items = DUMMY_FALLBACK;
+        s.items = [];
       })
       .addCase(loadFavorites.fulfilled, (s, a) => {
         s.favorites = a.payload || [];

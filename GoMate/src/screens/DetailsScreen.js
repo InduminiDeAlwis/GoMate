@@ -33,9 +33,16 @@ export default function DetailsScreen({route}) {
 
     async function load() {
       if (!id) return;
+      // If the passed item already contains coordinates or stops/schedule, prefer that and skip detail fetch
+      const hasLocalData = passed && (passed.latitude || passed.longitude || (passed.stops && passed.stops.length > 0) || (passed.schedule && passed.schedule.length > 0));
+      if (hasLocalData) {
+        // no remote fetch necessary (quick UI) — still keep cached merge above
+        return;
+      }
+
       try {
         setLoading(true);
-        // dispatch Redux thunk to fetch + cache details
+        // dispatch Redux thunk to fetch + cache details (only when necessary)
         const action = await dispatch(fetchDetails(id));
         const details = action.payload;
         if (mounted && details) setItem((prev) => ({...(prev || {}), ...details}));

@@ -1,88 +1,102 @@
+import Constants from 'expo-constants';
+
+// Read credentials from Expo `extra` (app.json/app.config.js) or process.env as a fallback
+const extra = (Constants.expoConfig && Constants.expoConfig.extra) || (Constants.manifest && Constants.manifest.extra) || {};
+const APP_ID = extra.TRANSPORT_APP_ID || extra.app_id || process.env.TRANSPORT_APP_ID;
+const APP_KEY = extra.TRANSPORT_APP_KEY || extra.app_key || process.env.TRANSPORT_APP_KEY;
+
 // Transport API helper: try to fetch from TransportAPI (requires keys), but fall back to mock data.
 export async function fetchTransportItems() {
-  // If you have TransportAPI credentials, you can build a real request here.
-  // For now, return mock transport items wrapped in { products: [...] } to match existing slice expectations.
+  // If you have TransportAPI credentials, attempt a real request. Otherwise, return mock data.
+  if (APP_ID && APP_KEY) {
+    try {
+      const url = `https://transportapi.com/v3/uk/places.json?query=bus&app_id=${APP_ID}&app_key=${APP_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.warn('TransportAPI list request failed:', res.status, res.statusText);
+      } else {
+        const json = await res.json();
 
-  // Attempt remote call to a demo endpoint (kept generic); if it fails, fall back to mock.
-  try {
-    // Example placeholder - most Transport API calls require keys so this will likely fail in dev.
-    const url = 'https://api.transportapi.com/v3/uk/places.json?query=bus&app_id=YOUR_ID&app_key=YOUR_KEY';
-    const res = await fetch(url);
-    if (res.ok) {
-      const json = await res.json();
-      // Map remote structure to our product-like structure
-      const products = (json.member || json.places || []).slice(0, 20).map((p, idx) => ({
-        id: p.id || idx + 1000,
-        title: p.name || p.atcocode || `Transport ${idx + 1}`,
-        description: p.description || p.locality || 'Transport service',
-        thumbnail: p.icon || `https://picsum.photos/200/200?random=${idx + 10}`,
-        status: 'Active',
-        type: p.type || 'Transport',
-      }));
-      return {products};
+        // Try multiple possible array fields that TransportAPI or other endpoints might return
+        const candidates = json.member || json.places || json.stops || json.features || json.results || json.data || json.entries || [];
+        const products = (Array.isArray(candidates) ? candidates.slice(0, 50) : []).map((p, idx) => ({
+          id: p.id || p.atcocode || p.atco || p.stop_id || p.properties?.id || idx + 1000,
+          atcocode: p.atcocode || p.atco || null,
+          title: p.name || p.properties?.name || p.locality || p.title || `Transport ${idx + 1}`,
+          description: p.description || p.properties?.description || p.locality || p.address || 'Transport service',
+          thumbnail: p.icon || p.properties?.icon || `https://picsum.photos/200/200?random=${idx + 10}`,
+          status: 'Active',
+          type: p.type || p.properties?.type || 'Transport',
+          latitude: p.latitude || p.properties?.latitude || null,
+          longitude: p.longitude || p.properties?.longitude || null,
+          raw: p,
+        }));
+
+        // Return whatever the API returned (could be empty). Do not fall back to mock when credentials are present.
+        return {products};
+      }
+    } catch (e) {
+      // remote call failed; fall back to mock data below
+      console.warn('TransportAPI fetch failed, falling back to mock data:', e.message || e);
     }
-  } catch (e) {
-    // ignore and fall back
+  } else {
+    console.warn('TransportAPI credentials missing: APP_ID/APP_KEY not found in Expo extras or environment');
   }
 
-  // Mock transport-themed data
-  const mock = [
-    {id: 101, title: 'City Express Bus', description: 'Frequent city route connecting downtown and uptown', thumbnail: 'https://picsum.photos/300/200?random=11', status: 'Active', type: 'Bus'},
-    {id: 102, title: 'Coastal Ferry', description: 'Scenic ferry service to the nearby islands', thumbnail: 'https://picsum.photos/300/200?random=12', status: 'Popular', type: 'Ferry'},
-    {id: 103, title: 'Regional Train', description: 'Comfortable train with Wi-Fi and refreshments', thumbnail: 'https://picsum.photos/300/200?random=13', status: 'Active', type: 'Train'},
-    {id: 104, title: 'Airport Shuttle', description: 'Direct shuttle to the airport (every 30 mins)', thumbnail: 'https://picsum.photos/300/200?random=14', status: 'Upcoming', type: 'Shuttle'},
-    {id: 105, title: 'Night Rider Bus', description: 'Night-time service across major hubs', thumbnail: 'https://picsum.photos/300/200?random=15', status: 'Popular', type: 'Bus'},
-    {id: 106, title: 'River Taxi', description: 'Fast water taxi for riverside stops', thumbnail: 'https://picsum.photos/300/200?random=16', status: 'Active', type: 'Boat'},
-  ];
-
-  return {products: mock};
+  // No mock fallback: when credentials are missing or remote fails return an empty products list.
+  return {products: []};
 }
 
 export async function fetchTransportItemDetails(id) {
-  // Try remote TransportAPI details if available (placeholder), otherwise return mocked details
-  try {
-    // Placeholder URL - requires app_id/app_key
-    const url = `https://api.transportapi.com/v3/uk/places/${id}.json?app_id=YOUR_ID&app_key=YOUR_KEY`;
-    const res = await fetch(url);
-    if (res.ok) {
+  // Try several strategies to fetch a place detail. TransportAPI list entries may need query params
+  // such as atcocode, osm_id, station_code or tiploc_code rather than a path id.
+  const attempts = [];
+  // 1) Try common query parameters first (atcocode, osm_id, station_code, tiploc_code)
+  attempts.push({ url: `https://transportapi.com/v3/uk/places.json?atcocode=${encodeURIComponent(id)}&app_id=${APP_ID}&app_key=${APP_KEY}`, reason: 'atcocode param' });
+  attempts.push({ url: `https://transportapi.com/v3/uk/places.json?osm_id=${encodeURIComponent(id)}&app_id=${APP_ID}&app_key=${APP_KEY}`, reason: 'osm_id param' });
+  attempts.push({ url: `https://transportapi.com/v3/uk/places.json?station_code=${encodeURIComponent(id)}&app_id=${APP_ID}&app_key=${APP_KEY}`, reason: 'station_code param' });
+  attempts.push({ url: `https://transportapi.com/v3/uk/places.json?tiploc_code=${encodeURIComponent(id)}&app_id=${APP_ID}&app_key=${APP_KEY}`, reason: 'tiploc_code param' });
+
+  // 2) Try path-based id last (some place identifiers are path-safe)
+  attempts.push({
+    url: APP_ID && APP_KEY
+      ? `https://transportapi.com/v3/uk/places/${encodeURIComponent(id)}.json?app_id=${APP_ID}&app_key=${APP_KEY}`
+      : `https://transportapi.com/v3/uk/places/${encodeURIComponent(id)}.json`,
+    reason: 'path id',
+  });
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt.url);
+      if (!res.ok) {
+        console.warn('TransportAPI detail attempt failed:', attempt.reason, res.status, res.statusText, attempt.url);
+        continue;
+      }
       const json = await res.json();
-      // Map to our expected detail shape
+      // If this is a list response, use first member
+      const source = Array.isArray(json.member) && json.member.length > 0 ? json.member[0] : json;
+
       return {
-        id: json.id || id,
-        title: json.name || json.locality || `Transport ${id}`,
-        description: json.description || json.locality || 'Transport service details',
-        thumbnail: json.icon || `https://picsum.photos/600/300?random=${id}`,
+        id: source.id || source.atcocode || source.properties?.id || id,
+        title: source.name || source.properties?.name || source.locality || `Transport ${id}`,
+        description: source.description || source.properties?.description || source.locality || 'Transport service details',
+        thumbnail: source.icon || source.properties?.icon || `https://picsum.photos/600/300?random=${id}`,
         status: 'Active',
-        type: json.type || 'Transport',
-        schedule: [],
+        type: source.type || source.properties?.type || 'Transport',
+        schedule: source.schedule || source.timetable || [],
+        stops: source.stops || source.features || source.points || [],
+        latitude: source.latitude || source.properties?.latitude || null,
+        longitude: source.longitude || source.properties?.longitude || null,
+        raw: source,
       };
+    } catch (e) {
+      console.warn('TransportAPI detail fetch error for attempt', attempt.reason, e.message || e);
+      continue;
     }
-  } catch (e) {
-    // ignore
   }
 
-  // Mock detail payload
-  const details = {
-    id,
-    title: `Detailed ${id}`,
-    description: 'This is a detailed description of the transport service, including amenities and notes.',
-    thumbnail: `https://picsum.photos/600/300?random=${id}`,
-    status: id % 2 === 0 ? 'Active' : 'Popular',
-    type: id % 3 === 0 ? 'Train' : id % 3 === 1 ? 'Bus' : 'Ferry',
-    schedule: [
-      {time: '08:00', dest: 'Central Station'},
-      {time: '09:30', dest: 'Airport'},
-      {time: '11:00', dest: 'Harbour'},
-    ],
-    // include geo coordinates for map rendering (mocked around a central point)
-    stops: [
-      {name: 'Central Station', latitude: 51.5074, longitude: -0.1278},
-      {name: 'City Square', latitude: 51.5090, longitude: -0.1180},
-      {name: 'Harbour', latitude: 51.5010, longitude: -0.1420},
-    ],
-  };
-
-  return details;
+  // Nothing found
+  return null;
 }
 
 export async function bookTransportItem(itemId, opts = {}) {

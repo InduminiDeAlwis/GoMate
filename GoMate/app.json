@@ -44,5 +44,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     }
+    ,
+    "extra": {
+      "TRANSPORT_APP_ID": "61c2b84f",
+      "TRANSPORT_APP_KEY": "9c5b4fc4dbf37c925cf41bdf214d540e",
+      "app_id": "61c2b84f",
+      "app_key": "9c5b4fc4dbf37c925cf41bdf214d540e"
+    }
   }
 }
