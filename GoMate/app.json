@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.indumini.GoMate"
     },
     "web": {
       "output": "static",
@@ -43,13 +44,16 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
-    ,
+    },
     "extra": {
       "TRANSPORT_APP_ID": "61c2b84f",
       "TRANSPORT_APP_KEY": "9c5b4fc4dbf37c925cf41bdf214d540e",
       "app_id": "61c2b84f",
-      "app_key": "9c5b4fc4dbf37c925cf41bdf214d540e"
+      "app_key": "9c5b4fc4dbf37c925cf41bdf214d540e",
+      "router": {},
+      "eas": {
+        "projectId": "6d031468-30d0-4422-8f2b-a97bcaa1ea80"
+      }
     }
   }
 }
